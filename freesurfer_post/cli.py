@@ -43,6 +43,8 @@ def process(ctx, input_path, output_path, subject_id, session_id, processing_lev
     if verbose:
         click.echo(f'Processing {input_path} -> {output_path}')
         click.echo(f'Subject ID: {subject_id}')
+        click.echo(f'Session ID: {session_id}')
+        click.echo(f'Processing level: {processing_level}')
 
     try:
         result = process_data(
@@ -57,33 +59,6 @@ def process(ctx, input_path, output_path, subject_id, session_id, processing_lev
     except Exception as e:
         click.echo(f'Error: {e}', err=True)
         raise click.Abort from e
-
-
-@main.command()
-@click.argument('input_file', type=click.Path(exists=True))
-@click.option(
-    '--atlas', '-a', default='DKT', help='Atlas to use for mapping (default: DKT)'
-)
-@click.option(
-    '--output-format',
-    '-f',
-    type=click.Choice(['csv', 'json', 'nifti']),
-    default='csv',
-    help='Output format (default: csv)',
-)
-@click.pass_context
-def map_to_atlas(ctx, input_file, atlas, output_format):
-    """Map surface data to atlas parcellation.
-
-    INPUT_FILE: Path to surface data file (e.g., .mgh, .gii)
-    """
-    verbose = ctx.obj.get('verbose', False)
-
-    if verbose:
-        click.echo(f'Mapping {input_file} to {atlas} atlas')
-        click.echo(f'Output format: {output_format}')
-
-    click.echo('Atlas mapping functionality coming soon!')
 
 
 if __name__ == '__main__':

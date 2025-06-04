@@ -83,29 +83,6 @@ def process_data(
     return result
 
 
-def load_surface_data(filepath: str | Path) -> np.ndarray:
-    """Load surface data from various formats.
-
-    Parameters
-    ----------
-    filepath : str or Path
-        Path to surface data file
-
-    Returns
-    -------
-    np.ndarray
-        Surface data array
-    """
-    filepath = Path(filepath)
-
-    if not filepath.exists():
-        raise FileNotFoundError(f'File not found: {filepath}')
-
-    # TODO: Implement loading for different formats (.mgh, .gii, etc.)
-    # This would typically use nibabel or similar
-    raise NotImplementedError('Surface data loading not yet implemented')
-
-
 def apply_neuromaps_transform(
     data: np.ndarray, source_space: str, target_space: str
 ) -> np.ndarray:
@@ -128,29 +105,3 @@ def apply_neuromaps_transform(
     # TODO: Implement neuromaps transformation
     # This would use the neuromaps package for surface-to-surface transforms
     raise NotImplementedError('Neuromaps transformation not yet implemented')
-
-
-def extract_fmriprep_surfaces(fmriprep_dir: str | Path, subject_id: str) -> dict:
-    """Extract surface files from fMRIPrep output.
-
-    Parameters
-    ----------
-    fmriprep_dir : str or Path
-        Path to fMRIPrep output directory
-    subject_id : str
-        Subject identifier
-
-    Returns
-    -------
-    dict
-        Dictionary mapping surface types to file paths
-    """
-    fmriprep_dir = Path(fmriprep_dir)
-    subject_dir = fmriprep_dir / f'sub-{subject_id}'
-
-    if not subject_dir.exists():
-        raise FileNotFoundError(f'Subject directory not found: {subject_dir}')
-
-    # TODO: Implement fMRIPrep surface file detection
-    # Look for typical fMRIPrep surface outputs
-    return {}
