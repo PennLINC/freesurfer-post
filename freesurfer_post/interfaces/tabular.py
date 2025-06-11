@@ -138,10 +138,14 @@ class SummarizeRegionStats(SimpleInterface):
         output_dir.mkdir(parents=True, exist_ok=True)
         output_prefix = f'{subject_id}_{session_id}' if session_id else subject_id
 
-        cleaned_atlas_name = atlas.replace('.', '').replace('_order', '').replace('_', '')
+        cleaned_atlas_name = (
+            atlas.replace('.', '').replace('_order', '').replace('_', '')
+        )
 
         # Convert column names to snake case
-        out_df.columns = [col.lower().replace('-', '_').replace('.', '_') for col in out_df.columns]
+        out_df.columns = [
+            col.lower().replace('-', '_').replace('.', '_') for col in out_df.columns
+        ]
         # Rename subject_id to participant_id
         out_df = out_df.rename(columns={'subject_id': 'participant_id'})
         # Reorder columns to have participant_id first
@@ -166,7 +170,9 @@ class SummarizeRegionStats(SimpleInterface):
                 metadata[col] = {'Description': f'Surface statistic: {col}'}
 
         # Save metadata
-        out_json = output_dir / f'{output_prefix}_seg-{cleaned_atlas_name}_surfacestats.json'
+        out_json = (
+            output_dir / f'{output_prefix}_seg-{cleaned_atlas_name}_surfacestats.json'
+        )
         with out_json.open('w') as jsonf:
             json.dump(metadata, jsonf, indent=2)
 
@@ -396,7 +402,9 @@ class FSStats(SimpleInterface):
         data_value = {key: value['value'] for key, value in fs_audit.items()}
         data_df = pd.DataFrame([data_value])
         # Convert column names to snake case
-        data_df.columns = [col.lower().replace('-', '_').replace('.', '_') for col in data_df.columns]
+        data_df.columns = [
+            col.lower().replace('-', '_').replace('.', '_') for col in data_df.columns
+        ]
         # Rename subject_id to participant_id
         data_df = data_df.rename(columns={'subject_id': 'participant_id'})
         # Reorder columns to have participant_id first
