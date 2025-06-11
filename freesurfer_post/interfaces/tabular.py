@@ -138,8 +138,18 @@ class SummarizeRegionStats(SimpleInterface):
         output_dir.mkdir(parents=True, exist_ok=True)
         output_prefix = f'{subject_id}_{session_id}' if session_id else subject_id
         cleaned_atlas_name = atlas.replace('.', '').replace('_order', '').replace('_', '')
+        # Convert column names to snake case
+        out_df.columns = [col.lower().replace('-', '_').replace('.', '_') for col in out_df.columns]
+        # Rename subject_id to participant_id
+        out_df = out_df.rename(columns={'subject_id': 'participant_id'})
+        # Reorder columns to have participant_id first
+        cols = out_df.columns.tolist()
+        cols.remove('participant_id')
+        out_df = out_df[['participant_id'] + cols]
+        # Replace missing values with "n/a"
+        out_df = out_df.fillna('n/a')
         out_df.to_csv(
-            output_dir / f'{output_prefix}_atlas-{cleaned_atlas_name}_surfacestats.tsv',
+            output_dir / f'{output_prefix}_seg-{cleaned_atlas_name}_surfacestats.tsv',
             sep='\t',
             index=False,
         )
@@ -359,11 +369,21 @@ class FSStats(SimpleInterface):
         out_tsv = output_dir / f'{output_prefix}_brainmeasures.tsv'
         out_json = output_dir / f'{output_prefix}_brainmeasures.json'
 
-        metadata = {key: value['meta'] for key, value in fs_audit.items()}
+        metadata = {key: {'Description': value['meta']} for key, value in fs_audit.items()}
         with out_json.open('w') as jsonf:
             json.dump(metadata, jsonf, indent=2)
 
         real_data = {key: value['value'] for key, value in fs_audit.items()}
         data_df = pd.DataFrame([real_data])
+        # Convert column names to snake case
+        data_df.columns = [col.lower().replace('-', '_').replace('.', '_') for col in data_df.columns]
+        # Rename subject_id to participant_id
+        data_df = data_df.rename(columns={'subject_id': 'participant_id'})
+        # Reorder columns to have participant_id first
+        cols = data_df.columns.tolist()
+        cols.remove('participant_id')
+        data_df = data_df[['participant_id'] + cols]
+        # Replace missing values with "n/a"
+        data_df = data_df.fillna('n/a')
         data_df.to_csv(out_tsv, sep='\t', index=False)
         return runtime
