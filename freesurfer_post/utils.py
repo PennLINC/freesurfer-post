@@ -1,9 +1,12 @@
 """Utility functions for FreeSurfer post-processing."""
+
 import warnings
 from pathlib import Path
 
 
-def find_freesurfer_dir(subjects_dir: str | Path, subject_id: str, session_id: str | None = None) -> Path:
+def find_freesurfer_dir(
+    subjects_dir: str | Path, subject_id: str, session_id: str | None = None
+) -> Path:
     """Find a valid FreeSurfer subject directory in a directory.
 
     Parameters
@@ -27,8 +30,8 @@ def find_freesurfer_dir(subjects_dir: str | Path, subject_id: str, session_id: s
 
     warn_no_session = False
     if session_id is not None:
-        if (subjects_dir / f"{subject_id}_{session_id}").exists():
-            return subjects_dir / f"{subject_id}_{session_id}"
+        if (subjects_dir / f'{subject_id}_{session_id}').exists():
+            return subjects_dir / f'{subject_id}_{session_id}'
         warn_no_session = True
 
     if (subjects_dir / subject_id).exists():
@@ -39,4 +42,6 @@ def find_freesurfer_dir(subjects_dir: str | Path, subject_id: str, session_id: s
                 stacklevel=2,
             )
         return subjects_dir / subject_id
-    raise FileNotFoundError(f'No directory found for subject: {subject_id}, session: {session_id}')
+    raise FileNotFoundError(
+        f'No directory found for subject: {subject_id}, session: {session_id}'
+    )

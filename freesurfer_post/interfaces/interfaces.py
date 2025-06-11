@@ -7,11 +7,13 @@ class _WaitingInputSpec(TraitedSpec):
         mandatory=True,
     )
 
+
 class _WaitingOutputSpec(TraitedSpec):
     no_args = traits.Str(
         desc='No args',
         mandatory=True,
     )
+
 
 class Waiting(SimpleInterface):
     # Force a bunch of nodes to finish and then retuen an empty string
