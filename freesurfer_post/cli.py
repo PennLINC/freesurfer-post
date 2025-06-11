@@ -17,7 +17,18 @@ from .workflows import build_workflow
 @click.option('--subject-id', '-s', help='Subject ID to process')
 @click.option('--session-id', '-x', help='Session ID to process')
 @click.option('--working-dir', '-w', help='Path to working directory')
-def main(verbose, input_path, output_path, processing_level, subjects_dir, subject_id, session_id, working_dir):
+@click.option('--fs-license-file', '-l', help='Path to license file')
+def main(
+    verbose,
+    input_path,
+    output_path,
+    processing_level,
+    subjects_dir,
+    subject_id,
+    session_id,
+    working_dir,
+    fs_license_file,
+):
     """FreeSurfer Post-processing Tools.
 
     A command line interface for post-processing FreeSurfer outputs.
@@ -41,6 +52,7 @@ def main(verbose, input_path, output_path, processing_level, subjects_dir, subje
     click.echo(f'Subject directory: {subject_fs_dir}')
     click.echo(f'Processing level: {processing_level}')
     click.echo(f'Working directory: {working_dir}')
+    click.echo(f'FreeSurfer license file: {fs_license_file}')
 
     workflow = build_workflow(
         subject_id=subject_id,
@@ -50,8 +62,9 @@ def main(verbose, input_path, output_path, processing_level, subjects_dir, subje
         working_dir=working_dir,
     )
 
-    workflow.config['execution'] = {
-        'stop_on_first_crash': 'true'}
+    import os
+    os.environ['FS_LICENSE'] = fs_license_file
+    workflow.config['execution'] = {'stop_on_first_crash': 'true'}
     workflow.run()
 
 
