@@ -1,14 +1,35 @@
 # FreeSurfer Post-processing Tools
 
-A Python package for post-processing FreeSurfer outputs with modern neuroimaging analysis capabilities, including integration with fMRIPrep and neuromaps.
+A Python package for post-processing FreeSurfer outputs. 
 
-## Features
 
-- **Command Line Interface**: Easy-to-use CLI for common FreeSurfer post-processing tasks
-- **fMRIPrep Integration**: Seamless integration with fMRIPrep outputs
-- **Neuromaps Support**: Surface-to-surface transformations using the neuromaps package
-- **Modern Python Packaging**: Built with modern Python packaging standards using pyproject.toml
-- **Extensible Architecture**: Modular design for easy extension and customization
+## Using with BABS
+
+Assuming you ran an fmriprep with `--anat-only` you can use just the
+outputs as the inputs for `freesurfer-post`.
+
+inputs/data//sourcedata/freesurfer
+
+```yaml
+input_datasets:
+    FreeSurfer:
+        required_files:
+            - "*freesuefer*.zip"
+        is_zipped: true
+        origin_url: "/path/to/FreeSurfer"
+        unzipped_path_containing_subject_dirs: "fmriprep_anat"
+        path_in_babs: inputs/data/freesurfer
+
+# Arguments in `singularity run`:
+bids_app_args:
+    $SUBJECT_SELECTION_FLAG: "--subject-id"
+    -w: "$BABS_TMPDIR"
+    --stop-on-first-crash: ""
+    --subjects-dir: "inputs/data/fmriprep_anat/fmriprep_anat/sourcedata/freesurfer"
+    --fs-license-file: "/path/to/FreeSurfer/license.txt" # [FIX ME] path to 
+```
+
+
 
 ## Installation
 
@@ -116,20 +137,6 @@ repos:
     hooks:
       - id: black
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes and ensure they pass linting and tests
-4. Commit your changes (`git commit -m 'Add some amazing feature'`)
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Open a Pull Request
-
-All pull requests are automatically tested with GitHub Actions, including:
-- Code linting with Ruff
-- Type checking with MyPy
-- Code formatting checks
 
 ## License
 

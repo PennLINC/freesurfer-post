@@ -163,7 +163,10 @@ RUN pip install --no-cache-dir $( ls *.whl )[container,test]
 
 RUN find $HOME -type d -exec chmod go=u {} + && \
     find $HOME -type f -exec chmod go=u {} + && \
-    rm -rf $HOME/.npm $HOME/.conda $HOME/.empty
+    rm -rf  $HOME/.conda $HOME/.empty
+
+# Get the annots from the original freesurfer_tabulate
+RUN git clone https://github.com/pennlinc/freesurfer_tabulate.git /opt/freesurfer_tabulate
 
 # For detecting the container
 ENV IS_DOCKER_8395080871=1
