@@ -63,6 +63,7 @@ def main(
     )
 
     import os
+
     os.environ['FS_LICENSE'] = fs_license_file
     workflow.config['execution'] = {'stop_on_first_crash': 'true'}
     workflow.run()

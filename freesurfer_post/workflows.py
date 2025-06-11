@@ -59,7 +59,8 @@ def build_workflow(
 
     inputnode = pe.Node(
         niu.IdentityInterface(
-            fields=['subject_id', 'session_id', 'fs_subjects_dir', 'output_dir']),
+            fields=['subject_id', 'session_id', 'fs_subjects_dir', 'output_dir']
+        ),
         name='inputnode',
     )
     inputnode.inputs.subject_id = subject_id
@@ -73,29 +74,44 @@ def build_workflow(
             subject_freesurfer_dir=subject_freesurfer_dir,
             parc_name=parc_name,
         )
-        workflow.connect([
-            (inputnode, parc_wf, [('subject_id', 'inputnode.subject_id'),
-                                  ('session_id', 'inputnode.session_id'),
-                                  ('fs_subjects_dir', 'inputnode.fs_subjects_dir'),
-                                  ('output_dir', 'inputnode.output_dir')]),
-        ])
+        workflow.connect(
+            [
+                (
+                    inputnode,
+                    parc_wf,
+                    [
+                        ('subject_id', 'inputnode.subject_id'),
+                        ('session_id', 'inputnode.session_id'),
+                        ('fs_subjects_dir', 'inputnode.fs_subjects_dir'),
+                        ('output_dir', 'inputnode.output_dir'),
+                    ],
+                ),
+            ]
+        )
 
     # Get the segmentation stats and euler number
     fs_stats = pe.Node(FSStats(), name='fs_stats')
-    workflow.connect([
-        (inputnode, fs_stats, [('subject_id', 'subject_id'),
-                               ('session_id', 'session_id'),
-                               ('fs_subjects_dir', 'subjects_dir'),
-                               ('output_dir', 'output_dir')]),
-    ])
+    workflow.connect(
+        [
+            (
+                inputnode,
+                fs_stats,
+                [
+                    ('subject_id', 'subject_id'),
+                    ('session_id', 'session_id'),
+                    ('fs_subjects_dir', 'subjects_dir'),
+                    ('output_dir', 'output_dir'),
+                ],
+            ),
+        ]
+    )
 
     return workflow
 
 
 def init_parcellation_wf(
-        subject_id: str,
-        subject_freesurfer_dir: str | Path,
-        parc_name: str):
+    subject_id: str, subject_freesurfer_dir: str | Path, parc_name: str
+):
     """
     Initialize a workflow to process a single parcellation.
 
@@ -126,7 +142,8 @@ def init_parcellation_wf(
     """
     inputnode = pe.Node(
         niu.IdentityInterface(
-            fields=['subject_id', 'session_id', 'fs_subjects_dir', 'output_dir']),
+            fields=['subject_id', 'session_id', 'fs_subjects_dir', 'output_dir']
+        ),
         name='inputnode',
     )
     clean_parc_name = parc_name.replace('.', '').replace('_', '')
@@ -138,25 +155,32 @@ def init_parcellation_wf(
         ),
         name='collect_stats',
     )
-    workflow.connect([
-        (inputnode, collect_stats, [
-            ('subject_id', 'subject_id'),
-            ('session_id', 'session_id'),
-            ('fs_subjects_dir', 'subjects_dir'),
-            ('output_dir', 'output_dir'),
-        ]),
-    ])
+    workflow.connect(
+        [
+            (
+                inputnode,
+                collect_stats,
+                [
+                    ('subject_id', 'subject_id'),
+                    ('session_id', 'session_id'),
+                    ('fs_subjects_dir', 'subjects_dir'),
+                    ('output_dir', 'output_dir'),
+                ],
+            ),
+        ]
+    )
     transform_nodes = {}
     parc_stats_nodes = {}
     gwr_seg_stats_nodes = {}
     for hemi in ['lh', 'rh']:
-
         fsaverage_annot = ANNOTS_DIR / f'{hemi}.{parc_name}.annot'
         # native annot is created by SurfaceTransform if it's not a NATIVE_PARCELLATION
         # otherwise it's already present in the subject's directory
         native_annot = subject_freesurfer_dir / 'label' / f'{hemi}.{parc_name}.annot'
         stats_file = subject_freesurfer_dir / 'stats' / f'{hemi}.{parc_name}.stats'
-        gwr_stats_file = subject_freesurfer_dir / 'stats' / f'{hemi}.{parc_name}.g-w.pct.stats'
+        gwr_stats_file = (
+            subject_freesurfer_dir / 'stats' / f'{hemi}.{parc_name}.g-w.pct.stats'
+        )
         if parc_name in AVAILABLE_PARCELLATIONS:
             transform_nodes[hemi] = pe.Node(
                 fs.SurfaceTransform(
@@ -229,7 +253,3 @@ def init_parcellation_wf(
         ])  # fmt: off
 
     return workflow
-
-
-
-
