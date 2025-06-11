@@ -35,7 +35,7 @@ def find_freesurfer_dir(subjects_dir: str | Path, subject_id: str, session_id: s
         if warn_no_session:
             warnings.warn(
                 f'{subjects_dir}/{subject_id}_{session_id} not found in {subjects_dir}'
-                f'using {subjects_dir}/{subject_id} instead',
+                f' using {subjects_dir}/{subject_id} instead',
                 stacklevel=2,
             )
         return subjects_dir / subject_id

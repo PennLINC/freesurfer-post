@@ -138,6 +138,7 @@ class SummarizeRegionStats(SimpleInterface):
         output_dir.mkdir(parents=True, exist_ok=True)
         output_prefix = f'{subject_id}_{session_id}' if session_id else subject_id
         cleaned_atlas_name = atlas.replace('.', '').replace('_order', '').replace('_', '')
+
         # Convert column names to snake case
         out_df.columns = [col.lower().replace('-', '_').replace('.', '_') for col in out_df.columns]
         # Rename subject_id to participant_id
@@ -148,6 +149,27 @@ class SummarizeRegionStats(SimpleInterface):
         out_df = out_df[['participant_id'] + cols]
         # Replace missing values with "n/a"
         out_df = out_df.fillna('n/a')
+
+        # Create metadata with the same column names
+        metadata = {}
+        for col in out_df.columns:
+            if col == 'participant_id':
+                metadata[col] = {'Description': 'BIDS participant ID'}
+            elif col == 'session_id':
+                metadata[col] = {'Description': 'BIDS session ID'}
+            elif col == 'hemisphere':
+                metadata[col] = {'Description': 'Brain hemisphere (lh or rh)'}
+            elif col == 'atlas':
+                metadata[col] = {'Description': 'Atlas used for parcellation'}
+            else:
+                metadata[col] = {'Description': f'Surface statistic: {col}'}
+
+        # Save metadata
+        out_json = output_dir / f'{output_prefix}_seg-{cleaned_atlas_name}_surfacestats.json'
+        with out_json.open('w') as jsonf:
+            json.dump(metadata, jsonf, indent=2)
+
+        # Save data
         out_df.to_csv(
             output_dir / f'{output_prefix}_seg-{cleaned_atlas_name}_surfacestats.tsv',
             sep='\t',
@@ -369,12 +391,9 @@ class FSStats(SimpleInterface):
         out_tsv = output_dir / f'{output_prefix}_brainmeasures.tsv'
         out_json = output_dir / f'{output_prefix}_brainmeasures.json'
 
-        metadata = {key: {'Description': value['meta']} for key, value in fs_audit.items()}
-        with out_json.open('w') as jsonf:
-            json.dump(metadata, jsonf, indent=2)
-
-        real_data = {key: value['value'] for key, value in fs_audit.items()}
-        data_df = pd.DataFrame([real_data])
+        # Extract just the values from the audit data
+        data_value = {key: value['value'] for key, value in fs_audit.items()}
+        data_df = pd.DataFrame([data_value])
         # Convert column names to snake case
         data_df.columns = [col.lower().replace('-', '_').replace('.', '_') for col in data_df.columns]
         # Rename subject_id to participant_id
@@ -385,5 +404,18 @@ class FSStats(SimpleInterface):
         data_df = data_df[['participant_id'] + cols]
         # Replace missing values with "n/a"
         data_df = data_df.fillna('n/a')
+
+        # Create metadata with the same column names as the TSV
+        metadata = {}
+        for key, value in fs_audit.items():
+            # Convert the key to match TSV column name
+            new_key = key.lower().replace('-', '_').replace('.', '_')
+            if key == 'subject_id':
+                new_key = 'participant_id'
+            metadata[new_key] = {'Description': value['meta']}
+
+        with out_json.open('w') as jsonf:
+            json.dump(metadata, jsonf, indent=2)
+
         data_df.to_csv(out_tsv, sep='\t', index=False)
         return runtime
