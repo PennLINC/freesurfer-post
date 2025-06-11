@@ -18,7 +18,7 @@ def statsfile_to_df(stats_fname, hemi, atlas, column_suffix=''):
     with open(stats_fname) as fo:
         data = fo.readlines()
 
-    idx = [i for i, l in enumerate(data) if l.startswith('# ColHeaders ')]
+    idx = [i for i, line in enumerate(data) if line.startswith('# ColHeaders ')]
     assert len(idx) == 1
     idx = idx[0]
 
