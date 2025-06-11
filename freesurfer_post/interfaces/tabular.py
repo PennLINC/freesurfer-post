@@ -15,7 +15,7 @@ NOSUFFIX_COLS = ['Index', 'SegId', 'StructName']
 
 
 def statsfile_to_df(stats_fname, hemi, atlas, column_suffix=''):
-    with open(stats_fname, 'r') as fo:
+    with open(stats_fname) as fo:
         data = fo.readlines()
 
     idx = [i for i, l in enumerate(data) if l.startswith('# ColHeaders ')]
@@ -137,6 +137,7 @@ class SummarizeRegionStats(SimpleInterface):
         output_dir = Path(self.inputs.output_dir) / subject_id
         output_dir.mkdir(parents=True, exist_ok=True)
         output_prefix = f'{subject_id}_{session_id}' if session_id else subject_id
+
         cleaned_atlas_name = atlas.replace('.', '').replace('_order', '').replace('_', '')
 
         # Convert column names to snake case
@@ -236,7 +237,7 @@ def read_stats(stats_file, info, get_measures=False, measures_only=False):
     (header,) = [line for line in lines if header_tag in line]
     header = header[len(header_tag) :].strip().split()
 
-    stats_df = pd.read_csv(str(stats_file), sep='\s+', comment='#', names=header).melt(
+    stats_df = pd.read_csv(str(stats_file), sep=r'\s+', comment='#', names=header).melt(
         id_vars=['StructName'], ignore_index=True
     )
     stats_df = stats_df[stats_df['variable'] != 'Index']

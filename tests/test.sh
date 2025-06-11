@@ -3,7 +3,7 @@ docker run --rm -ti --entrypoint /bin/bash \
    -v /Users/mcieslak/Desktop/fmriprep_anat:/data \
    -v /Users/mcieslak/Desktop/freesurfer_post:/output \
    -v /Users/mcieslak/Desktop/fspost_work:/work \
-   --mount type=bind,source=/Users/mcieslak/Desktop/license.txt,target=/opt/freesurfer/license.txt \
+   --mount type=bind,source=/Users/mcieslak/Desktop/license.txt,target=/opt/fs_license.txt \
    -v /Users/mcieslak/projects/freesurfer-post/freesurfer_post:/opt/conda/envs/freesurfer-post/lib/python3.12/site-packages/freesurfer_post \
    pennlinc/freesurfer-post:unstable \
        /data \
@@ -18,5 +18,7 @@ freesurfer-post \
        participant \
        --subjects-dir /data/sourcedata/freesurfer \
        --subject-id sub-colornest001 \
+       --fs-license-file /opt/fs_license.txt \
+       --session-id ses-01 \
        -w /work
     
