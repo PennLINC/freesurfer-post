@@ -395,24 +395,45 @@ class FSStats(SimpleInterface):
         output_dir = Path(self.inputs.output_dir) / subject_id
         output_dir.mkdir(parents=True, exist_ok=True)
         output_prefix = f'{subject_id}_{session_id}' if session_id else subject_id
-        out_tsv = output_dir / f'{output_prefix}_brainmeasures.tsv'
-        out_json = output_dir / f'{output_prefix}_brainmeasures.json'
+        atlas_tsv = output_dir / f'{output_prefix}_atlasmeasures.tsv'
+        whole_brain_tsv = output_dir / f'{output_prefix}_brainmeasures.tsv'
+        atlas_json = output_dir / f'{output_prefix}_atlasmeasures.json'
+        whole_brain_json = output_dir / f'{output_prefix}_brainmeasures.json'
 
         # Extract just the values from the audit data
         data_value = {key: value['value'] for key, value in fs_audit.items()}
         data_df = pd.DataFrame([data_value])
-        # Convert column names to snake case
-        data_df.columns = [
-            col.lower().replace('-', '_').replace('.', '_') for col in data_df.columns
-        ]
+
         # Rename subject_id to participant_id
         data_df = data_df.rename(columns={'subject_id': 'participant_id'})
-        # Reorder columns to have participant_id first
+
         cols = data_df.columns.tolist()
-        cols.remove('participant_id')
-        data_df = data_df[['participant_id'] + cols]
-        # Replace missing values with "n/a"
-        data_df = data_df.fillna('n/a')
+        id_cols = ['participant_id', 'session_id']
+        id_cols = [col for col in id_cols if col in cols]
+
+        # Convert column names to snake case
+        data_df.columns = [col.lower().replace('-', '_').replace('.', '_') for col in cols]
+
+        # Split data_df into two dataframes, one for the atlas and one for the whole brain measures
+        suffixes = [
+            '_nvoxels',
+            '_volume_mm3',
+            '_normmean',
+            '_normstddev',
+            '_normmin',
+            '_normmax',
+            '_normrange',
+        ]
+        # suffixes = [
+        #     '_NVoxels', '_Volume_mm3', '_normMean',
+        #     '_normStdDev', '_normMin', '_normMax', '_normRange',
+        # ]
+        atlas_columns = [col for col in cols if any(col.endswith(suffix) for suffix in suffixes)]
+        whole_brain_columns = [col for col in cols if col not in atlas_columns]
+        atlas_df = data_df[id_cols + atlas_columns]
+        whole_brain_df = data_df[id_cols + whole_brain_columns]
+
+        atlas_df = melt_with_suffix_list(atlas_df, id_cols, suffixes)
 
         # Create metadata with the same column names as the TSV
         metadata = {}
@@ -423,8 +444,73 @@ class FSStats(SimpleInterface):
                 new_key = 'participant_id'
             metadata[new_key] = {'Description': value['meta']}
 
-        with out_json.open('w') as jsonf:
-            json.dump(metadata, jsonf, indent=2)
+        with atlas_json.open('w') as jsonf:
+            json.dump(metadata, jsonf, indent=2, sort_keys=True)
 
-        data_df.to_csv(out_tsv, sep='\t', index=False)
+        with whole_brain_json.open('w') as jsonf:
+            json.dump(metadata, jsonf, indent=2, sort_keys=True)
+
+        atlas_df.to_csv(atlas_tsv, sep='\t', na_rep='n/a', index=False)
+        whole_brain_df.to_csv(whole_brain_tsv, sep='\t', na_rep='n/a', index=False)
         return runtime
+
+
+def melt_with_suffix_list(df, id_cols, suffixes):
+    """Melt a DataFrame from wide form to long form using a predefined list of suffixes.
+
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        Input DataFrame in wide form
+    id_cols : list
+        List of ID column names to preserve
+    suffixes : list
+        List of suffix strings to look for in column names
+
+    Returns:
+    --------
+    pandas.DataFrame
+        DataFrame in long form with ID columns, 'name' column, and separate columns for each
+        suffix.
+    """
+    # Get all non-ID columns
+    all_cols = df.columns.tolist()
+    non_id_cols = [col for col in all_cols if col not in id_cols]
+
+    # Find all unique names by removing suffixes from column names
+    names = []
+    for col in non_id_cols:
+        for suffix in suffixes:
+            if col.endswith(suffix):
+                name = col[:-len(suffix)]  # Remove the suffix to get the name
+                names.append(name)
+                continue
+
+    # Create the result DataFrame starting with ID columns
+    result_rows = []
+
+    for _, row in df.iterrows():
+        for name in names:
+            new_row = {}
+            # Add ID columns
+            for id_col in id_cols:
+                new_row[id_col] = row[id_col]
+
+            # Add the name
+            new_row['name'] = name
+
+            # Add values for each suffix
+            for suffix in suffixes:
+                col_name = name + suffix
+                if col_name in df.columns:
+                    # Remove leading underscore from suffix for cleaner column name
+                    clean_suffix = suffix.lstrip('_')
+                    new_row[clean_suffix] = row[col_name]
+                else:
+                    # If column doesn't exist, add NaN or None
+                    clean_suffix = suffix.lstrip('_')
+                    new_row[clean_suffix] = None
+
+            result_rows.append(new_row)
+
+    return pd.DataFrame(result_rows)
