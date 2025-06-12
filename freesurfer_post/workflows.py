@@ -59,7 +59,7 @@ def build_workflow(
 
     inputnode = pe.Node(
         niu.IdentityInterface(
-            fields=['subject_id', 'session_id', 'fs_subjects_dir', 'output_dir']
+            fields=['subject_id', 'session_id', 'fs_subjects_dir', 'output_dir'],
         ),
         name='inputnode',
     )
@@ -74,37 +74,25 @@ def build_workflow(
             subject_freesurfer_dir=subject_freesurfer_dir,
             parc_name=parc_name,
         )
-        workflow.connect(
-            [
-                (
-                    inputnode,
-                    parc_wf,
-                    [
-                        ('subject_id', 'inputnode.subject_id'),
-                        ('session_id', 'inputnode.session_id'),
-                        ('fs_subjects_dir', 'inputnode.fs_subjects_dir'),
-                        ('output_dir', 'inputnode.output_dir'),
-                    ],
-                ),
-            ]
-        )
+        workflow.connect([
+            (inputnode, parc_wf, [
+                ('subject_id', 'inputnode.subject_id'),
+                ('session_id', 'inputnode.session_id'),
+                ('fs_subjects_dir', 'inputnode.fs_subjects_dir'),
+                ('output_dir', 'inputnode.output_dir'),
+            ]),
+        ])  # fmt:skip
 
     # Get the segmentation stats and euler number
     fs_stats = pe.Node(FSStats(), name='fs_stats')
-    workflow.connect(
-        [
-            (
-                inputnode,
-                fs_stats,
-                [
-                    ('subject_id', 'subject_id'),
-                    ('session_id', 'session_id'),
-                    ('fs_subjects_dir', 'subjects_dir'),
-                    ('output_dir', 'output_dir'),
-                ],
-            ),
-        ]
-    )
+    workflow.connect([
+        (inputnode, fs_stats, [
+            ('subject_id', 'subject_id'),
+            ('session_id', 'session_id'),
+            ('fs_subjects_dir', 'subjects_dir'),
+            ('output_dir', 'output_dir'),
+        ]),
+    ])  # fmt:skip
 
     return workflow
 
@@ -142,7 +130,7 @@ def init_parcellation_wf(
     """
     inputnode = pe.Node(
         niu.IdentityInterface(
-            fields=['subject_id', 'session_id', 'fs_subjects_dir', 'output_dir']
+            fields=['subject_id', 'session_id', 'fs_subjects_dir', 'output_dir'],
         ),
         name='inputnode',
     )
@@ -155,20 +143,14 @@ def init_parcellation_wf(
         ),
         name='collect_stats',
     )
-    workflow.connect(
-        [
-            (
-                inputnode,
-                collect_stats,
-                [
-                    ('subject_id', 'subject_id'),
-                    ('session_id', 'session_id'),
-                    ('fs_subjects_dir', 'subjects_dir'),
-                    ('output_dir', 'output_dir'),
-                ],
-            ),
-        ]
-    )
+    workflow.connect([
+        (inputnode, collect_stats, [
+            ('subject_id', 'subject_id'),
+            ('session_id', 'session_id'),
+            ('fs_subjects_dir', 'subjects_dir'),
+            ('output_dir', 'output_dir'),
+        ]),
+    ])  # fmt:skip
     transform_nodes = {}
     parc_stats_nodes = {}
     gwr_seg_stats_nodes = {}
@@ -250,6 +232,6 @@ def init_parcellation_wf(
             (transform_nodes[hemi], parc_stats_nodes[hemi], [('out_file', 'in_annotation')]),
             (parc_stats_nodes[hemi], collect_stats, [('out_table', f'{hemi}_stats_file')]),
             (gwr_seg_stats_nodes[hemi], collect_stats, [('summary_file', f'{hemi}_gwr_stats_file')]),
-        ])  # fmt: off
+        ])  # fmt: skip
 
     return workflow
