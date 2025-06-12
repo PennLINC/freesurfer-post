@@ -395,10 +395,10 @@ class FSStats(SimpleInterface):
         output_dir = Path(self.inputs.output_dir) / subject_id
         output_dir.mkdir(parents=True, exist_ok=True)
         output_prefix = f'{subject_id}_{session_id}' if session_id else subject_id
-        atlas_tsv = output_dir / f'{output_prefix}_atlasmeasures.tsv'
-        whole_brain_tsv = output_dir / f'{output_prefix}_brainmeasures.tsv'
-        atlas_json = output_dir / f'{output_prefix}_atlasmeasures.json'
-        whole_brain_json = output_dir / f'{output_prefix}_brainmeasures.json'
+        atlas_tsv = output_dir / f'{output_prefix}_seg-Freesurfer_morph.tsv'
+        whole_brain_tsv = output_dir / f'{output_prefix}_desc-Freesurfer_qc.tsv'
+        atlas_json = output_dir / f'{output_prefix}_seg-Freesurfer_morph.json'
+        whole_brain_json = output_dir / f'{output_prefix}_desc-Freesurfer_qc.json'
 
         # Extract just the values from the audit data
         data_value = {key: value['value'] for key, value in fs_audit.items()}
