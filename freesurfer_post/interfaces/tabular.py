@@ -412,7 +412,9 @@ class FSStats(SimpleInterface):
         id_cols = [col for col in id_cols if col in cols]
 
         # Convert column names to snake case
-        data_df.columns = [col.lower().replace('-', '_').replace('.', '_') for col in cols]
+        data_df.columns = [
+            col.lower().replace('-', '_').replace('.', '_') for col in cols
+        ]
 
         # Split data_df into two dataframes, one for the atlas and one for the whole brain measures
         suffixes = [
@@ -428,7 +430,9 @@ class FSStats(SimpleInterface):
         #     '_NVoxels', '_Volume_mm3', '_normMean',
         #     '_normStdDev', '_normMin', '_normMax', '_normRange',
         # ]
-        atlas_columns = [col for col in cols if any(col.endswith(suffix) for suffix in suffixes)]
+        atlas_columns = [
+            col for col in cols if any(col.endswith(suffix) for suffix in suffixes)
+        ]
         whole_brain_columns = [col for col in cols if col not in atlas_columns]
         atlas_df = data_df[id_cols + atlas_columns]
         whole_brain_df = data_df[id_cols + whole_brain_columns]
@@ -482,7 +486,7 @@ def melt_with_suffix_list(df, id_cols, suffixes):
     for col in non_id_cols:
         for suffix in suffixes:
             if col.endswith(suffix):
-                name = col[:-len(suffix)]  # Remove the suffix to get the name
+                name = col[: -len(suffix)]  # Remove the suffix to get the name
                 names.append(name)
                 continue
 
