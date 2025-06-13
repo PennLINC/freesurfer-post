@@ -93,20 +93,20 @@ inputs/data//sourcedata/freesurfer
 
 ```yaml
 input_datasets:
-    FreeSurfer:
+    fmriprep_anat:
         required_files:
-            - "*freesuefer*.zip"
+            - "*fmriprep_anat*.zip"
         is_zipped: true
-        origin_url: "/path/to/FreeSurfer"
+        origin_url: "ria+file:///path/to/fmriprep_anat/output_ria#~data"
         unzipped_path_containing_subject_dirs: "fmriprep_anat"
-        path_in_babs: inputs/data/freesurfer
+        path_in_babs: inputs/data/fmriprep_anat
 
 # Arguments in `singularity run`:
 bids_app_args:
     $SUBJECT_SELECTION_FLAG: "--subject-id"
+    $SESSION_SELECTION_FLAG: "--session-id"
     -w: "$BABS_TMPDIR"
-    --stop-on-first-crash: ""
-    --subjects-dir: "inputs/data/fmriprep_anat/fmriprep_anat/sourcedata/freesurfer"
+    --subjects-dir: "${PWD}/inputs/data/fmriprep_anat/fmriprep_anat/sourcedata/freesurfer"
     --fs-license-file: "/path/to/FreeSurfer/license.txt" # [FIX ME] path to 
 ```
 
