@@ -13,6 +13,18 @@ from ..utils import find_freesurfer_dir
 hemispheres = ['lh', 'rh']
 NOSUFFIX_COLS = ['Index', 'SegId', 'StructName']
 
+ASEG_STATS_METADATA = {
+    'participant_id': {'Description': 'BIDS participant ID'},
+    'session_id': {'Description': 'BIDS session ID'},
+    'name': {'Description': 'Name of the structure'},
+    'nvoxels': {'Description': 'Number of voxels in the structure. Originally NVoxels.'},
+    'volume_mm3': {'Description': 'Volume of the structure in mm3. Originally Volume_mm3.'},
+    'normmean': {'Description': 'Normalized mean. Originally normMean.'},
+    'normstddev': {'Description': 'Normalized standard deviation. Originally normStdDev.'},
+    'normmin': {'Description': 'Normalized minimum. Originally normMin.'},
+    'normmax': {'Description': 'Normalized maximum. Originally normMax.'},
+    'normrange': {'Description': 'Normalized range. Originally normRange.'},
+}
 
 def statsfile_to_df(stats_fname, hemi, atlas, column_suffix=''):
     with open(stats_fname) as fo:
@@ -395,26 +407,25 @@ class FSStats(SimpleInterface):
         output_dir = Path(self.inputs.output_dir) / subject_id
         output_dir.mkdir(parents=True, exist_ok=True)
         output_prefix = f'{subject_id}_{session_id}' if session_id else subject_id
-        atlas_tsv = output_dir / f'{output_prefix}_seg-Freesurfer_morph.tsv'
-        whole_brain_tsv = output_dir / f'{output_prefix}_desc-Freesurfer_qc.tsv'
-        atlas_json = output_dir / f'{output_prefix}_seg-Freesurfer_morph.json'
-        whole_brain_json = output_dir / f'{output_prefix}_desc-Freesurfer_qc.json'
+        atlas_tsv = output_dir / f'{output_prefix}_seg-FreeSurfer_morph.tsv'
+        whole_brain_tsv = output_dir / f'{output_prefix}_desc-FreeSurfer_qc.tsv'
+        atlas_json = output_dir / f'{output_prefix}_seg-FreeSurfer_morph.json'
+        whole_brain_json = output_dir / f'{output_prefix}_desc-FreeSurfer_qc.json'
+
+        # Convert all the keys to snake case
+        fs_audit_renamed = {}
+        for key in fs_audit:
+            fs_audit_renamed[key.lower().replace('-', '_').replace('.', '_')] = fs_audit[key]
+        fs_audit_renamed['participant_id'] = fs_audit_renamed['subject_id']
+        del fs_audit_renamed['subject_id']
 
         # Extract just the values from the audit data
-        data_value = {key: value['value'] for key, value in fs_audit.items()}
+        data_value = {key: value['value'] for key, value in fs_audit_renamed.items()}
         data_df = pd.DataFrame([data_value])
-
-        # Rename subject_id to participant_id
-        data_df = data_df.rename(columns={'subject_id': 'participant_id'})
 
         cols = data_df.columns.tolist()
         id_cols = ['participant_id', 'session_id']
         id_cols = [col for col in id_cols if col in cols]
-
-        # Convert column names to snake case
-        data_df.columns = [
-            col.lower().replace('-', '_').replace('.', '_') for col in cols
-        ]
 
         # Split data_df into two dataframes, one for the atlas and one for the whole brain measures
         suffixes = [
@@ -426,33 +437,24 @@ class FSStats(SimpleInterface):
             '_normmax',
             '_normrange',
         ]
-        # suffixes = [
-        #     '_NVoxels', '_Volume_mm3', '_normMean',
-        #     '_normStdDev', '_normMin', '_normMax', '_normRange',
-        # ]
+
         atlas_columns = [
-            col for col in cols if any(col.endswith(suffix) for suffix in suffixes)
+            col for col in data_df.columns if any(col.endswith(suffix) for suffix in suffixes)
         ]
-        whole_brain_columns = [col for col in cols if col not in atlas_columns]
+        whole_brain_columns = [col for col in data_df.columns if col not in atlas_columns]
         atlas_df = data_df[id_cols + atlas_columns]
         whole_brain_df = data_df[id_cols + whole_brain_columns]
 
         atlas_df = melt_with_suffix_list(atlas_df, id_cols, suffixes)
 
         # Create metadata with the same column names as the TSV
-        metadata = {}
-        for key, value in fs_audit.items():
-            # Convert the key to match TSV column name
-            new_key = key.lower().replace('-', '_').replace('.', '_')
-            if key == 'subject_id':
-                new_key = 'participant_id'
-            metadata[new_key] = {'Description': value['meta']}
+        wholebrain_metadata = {key: fs_audit_renamed[key]['meta'] for key in whole_brain_df.columns}
 
         with atlas_json.open('w') as jsonf:
-            json.dump(metadata, jsonf, indent=2, sort_keys=True)
+            json.dump(ASEG_STATS_METADATA, jsonf, indent=2, sort_keys=True)
 
         with whole_brain_json.open('w') as jsonf:
-            json.dump(metadata, jsonf, indent=2, sort_keys=True)
+            json.dump(wholebrain_metadata, jsonf, indent=2, sort_keys=True)
 
         atlas_df.to_csv(atlas_tsv, sep='\t', na_rep='n/a', index=False)
         whole_brain_df.to_csv(whole_brain_tsv, sep='\t', na_rep='n/a', index=False)
