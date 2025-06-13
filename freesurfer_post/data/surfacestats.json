@@ -1,0 +1,81 @@
+{
+    "participant_id": {
+      "Description": "BIDS participant ID"
+    },
+    "session_id": {
+      "Description": "BIDS session ID"
+    },
+    "atlas": {
+      "Description": "Atlas used for parcellation"
+    },
+    "hemisphere": {
+      "Description": "Brain hemisphere (lh or rh)"
+    },
+    "structname": {
+      "Description": "Name of structure/ROI in the annot file’s lookup table"
+    },
+    "numvert": {
+      "Description": "Number of surface vertices included in this parcel. This is a native surface, so the number of vertices in total will differ across scans."
+    },
+    "surfarea": {
+      "Description": "Sum of the areas of the triangles included in the parcellation",
+      "Units": "mm^2"
+    },
+    "grayvol": {
+      "Description": "Surface-based total gray matter volume within a ROI.",
+      "Units": "mm^3"
+    },
+    "thickavg": {
+      "Description": "Mean cortical thickness within the ROI. At each vertex, cortical thickness​ is the average of the shortest distance to the opposite surface (white to pial and pial to white)",
+      "Units": "mm"
+    },
+    "thickstd": {
+      "Description": "Standard deviation of cortical thickness within the ROI",
+      "Units": "mm"
+    },
+    "meancurv": {
+      "Description": "Integrated Rectified Mean Curvature. Let k1 and k2 be the principal curvatures at points 1 and 2 on the cortical surface, mean curvature = (k1 + k2)/2",
+      "Units": "mm^-1",
+      "References": ["https://mathworld.wolfram.com/MeanCurvature.html"]
+    },
+    "gauscurv": {
+      "Description": "Integrated Rectified Gaussian Curvature.",
+      "Units": "mm^-2",
+      "References": ["https://mathworld.wolfram.com/GaussianCurvature.html"]
+    },
+    "foldind": {
+      "Description": "Folding index, higher values indicate more tightly folded cortex. Let k1 and k2 be the principal curvatures at points 1 and 2 on the cortical surface. Folding Index = |k1| (|k1|−| k2|)",
+      "Units": "unitless",
+      "References": ["https://doi.org/10.1523/JNEUROSCI.17-18-07079.1997"]
+    },
+    "curvind": {
+      "Description": "Intrinsic Curvature Index. Let k1 and k2 be the principal curvatures at points 1 and 2 on the cortical surface. Intrinsic Curvature Index = |k1k2|",
+      "Units": "unitless",
+      "References": ["https://doi.org/10.1523/JNEUROSCI.17-18-07079.1997"]
+    },
+    "index": {
+      "Description": "nth Segmentation in stats file."
+    },
+    "segid": {
+      "Description": "index in lookup table"
+    },
+    "mean_wgpct": {
+      "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the mean wgpct across all vertices in this parcel."
+    },
+    "stddev_wgpct": {
+      "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the standard deviation of wgpct across all vertices in this parcel."
+    },
+    "min_wgpct": {
+      "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the minimum wgpct value observed across all vertices in this parcel."
+    },
+    "max_wgpct": {
+      "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the maximum wgpct value observed across all vertices in this parcel."
+    },
+    "range_wgpct": {
+      "Description": "The range of values across all vertices in this parcel. Should be max_wgpct - min_wgpct"
+    },
+    "snr_wgpct": {
+      "Description": "Equal to mean_wgpct / std_wgpct"
+    }
+  }
+  

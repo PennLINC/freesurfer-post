@@ -167,27 +167,6 @@ class SummarizeRegionStats(SimpleInterface):
         # Replace missing values with "n/a"
         out_df = out_df.fillna('n/a')
 
-        # Create metadata with the same column names
-        metadata = {}
-        for col in out_df.columns:
-            if col == 'participant_id':
-                metadata[col] = {'Description': 'BIDS participant ID'}
-            elif col == 'session_id':
-                metadata[col] = {'Description': 'BIDS session ID'}
-            elif col == 'hemisphere':
-                metadata[col] = {'Description': 'Brain hemisphere (lh or rh)'}
-            elif col == 'atlas':
-                metadata[col] = {'Description': 'Atlas used for parcellation'}
-            else:
-                metadata[col] = {'Description': f'Surface statistic: {col}'}
-
-        # Save metadata
-        out_json = (
-            output_dir / f'{output_prefix}_seg-{cleaned_atlas_name}_surfacestats.json'
-        )
-        with out_json.open('w') as jsonf:
-            json.dump(metadata, jsonf, indent=2)
-
         # Save data
         out_df.to_csv(
             output_dir / f'{output_prefix}_seg-{cleaned_atlas_name}_surfacestats.tsv',
