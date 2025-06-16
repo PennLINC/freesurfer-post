@@ -15,10 +15,10 @@
       "Description": "Name of structure/ROI in the annot file’s lookup table"
     },
     "numvert": {
-      "Description": "Number of surface vertices included in this parcel. This is a native surface, so the number of vertices in total will differ across scans."
+      "Description": "Number of surface vertices included in this ROI. This is a native surface, so the number of vertices in total will differ across scans."
     },
     "surfarea": {
-      "Description": "Sum of the areas of the triangles included in the parcellation",
+      "Description": "Sum of the areas of the triangles included in the ROI",
       "Units": "mm^2"
     },
     "grayvol": {
@@ -50,7 +50,7 @@
     },
     "curvind": {
       "Description": "Intrinsic Curvature Index is the Van Essen curvature index for the region (i.e., the integral across all regions of positive intrinsic curvature divided by 4π)",
-      "Units": "unitless",
+      "Units": "arbitrary",
       "References": ["https://doi.org/10.1523/JNEUROSCI.17-18-07079.1997", "https://doi.org/10.1016/j.neuroimage.2006.04.220"]
     },
     "index": {
@@ -60,16 +60,16 @@
       "Description": "index in the lookup table"
     },
     "mean_wgpct": {
-      "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the mean wgpct across all vertices in this parcel."
+      "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the mean wgpct across all vertices in this ROI."
     },
     "stddev_wgpct": {
-      "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the standard deviation of wgpct across all vertices in this parcel."
+      "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the standard deviation of wgpct across all vertices in this ROI."
     },
     "min_wgpct": {
-      "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the minimum wgpct value observed across all vertices in this parcel."
+      "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the minimum wgpct value observed across all vertices in this ROI."
     },
     "max_wgpct": {
-      "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the maximum wgpct value observed across all vertices in this parcel."
+      "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the maximum wgpct value observed across all vertices in this ROI."
     },
     "range_wgpct": {
       "Description": "The range of wgpct values across all vertices in this parcel. Should be max_wgpct - min_wgpct"
