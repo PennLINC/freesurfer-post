@@ -45,7 +45,7 @@
     },
     "foldind": {
       "Description": "Folding Index is the Van Essen folding index for the region (i.e., the integral of the product of the maximum principal curvature and the difference between maximum and minimum curvature divided by 4π)",
-      "Units": "unitless",
+      "Units": "arbitrary",
       "References": ["https://doi.org/10.1523/JNEUROSCI.17-18-07079.1997", "https://doi.org/10.1016/j.neuroimage.2006.04.220"]
     },
     "curvind": {
