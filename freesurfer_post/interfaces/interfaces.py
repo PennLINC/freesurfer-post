@@ -43,5 +43,6 @@ class SurfStatsMetadata(SimpleInterface):
             data = json.load(f)
             with open(out_file, 'w') as out_f:
                 json.dump(data, out_f, indent=2, sort_keys=True)
+        self._results['out_file'] = str(out_file)
 
         return runtime

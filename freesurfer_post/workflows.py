@@ -143,7 +143,11 @@ def init_parcellation_wf(
         ),
         name='collect_stats',
     )
-    surf_stats_metadata = pe.Node(SurfStatsMetadata(), name='surf_stats_metadata')
+    surf_stats_metadata = pe.Node(
+        SurfStatsMetadata(),
+        name='surf_stats_metadata',
+        always_run=True,
+    )
     workflow.connect([
         (inputnode, collect_stats, [
             ('subject_id', 'subject_id'),
