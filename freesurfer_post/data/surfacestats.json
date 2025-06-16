@@ -22,7 +22,7 @@
       "Units": "mm^2"
     },
     "grayvol": {
-      "Description": "Surface-based total gray matter volume within a ROI.",
+      "Description": "Surface-based total gray matter volume.",
       "Units": "mm^3"
     },
     "thickavg": {
@@ -34,30 +34,30 @@
       "Units": "mm"
     },
     "meancurv": {
-      "Description": "Integrated Rectified Mean Curvature. Let k1 and k2 be the principal curvatures at points 1 and 2 on the cortical surface, mean curvature = (k1 + k2)/2",
+      "Description": "Integrated Rectified Mean Curvature. Mean curvature is the average mean curvature (the average of the principal curvatures at each vertex) for each region.",
       "Units": "mm^-1",
-      "References": ["https://mathworld.wolfram.com/MeanCurvature.html"]
+      "References": ["https://mathworld.wolfram.com/MeanCurvature.html", "https://doi.org/10.1016/j.neuroimage.2006.04.220"]
     },
     "gauscurv": {
-      "Description": "Integrated Rectified Gaussian Curvature.",
+      "Description": "Integrated Rectified Gaussian Curvature. Gaussian curvature is the average Gaussian curvature (the product of the principal curvatures at each vertex) for each region",
       "Units": "mm^-2",
-      "References": ["https://mathworld.wolfram.com/GaussianCurvature.html"]
+      "References": ["https://mathworld.wolfram.com/GaussianCurvature.html", "https://doi.org/10.1016/j.neuroimage.2006.04.220"]
     },
     "foldind": {
-      "Description": "Folding index, higher values indicate more tightly folded cortex. Let k1 and k2 be the principal curvatures at points 1 and 2 on the cortical surface. Folding Index = |k1| (|k1|−| k2|)",
+      "Description": "Folding Index is the Van Essen folding index for the region (i.e., the integral of the product of the maximum principal curvature and the difference between maximum and minimum curvature divided by 4π)",
       "Units": "unitless",
-      "References": ["https://doi.org/10.1523/JNEUROSCI.17-18-07079.1997"]
+      "References": ["https://doi.org/10.1523/JNEUROSCI.17-18-07079.1997", "https://doi.org/10.1016/j.neuroimage.2006.04.220"]
     },
     "curvind": {
-      "Description": "Intrinsic Curvature Index. Let k1 and k2 be the principal curvatures at points 1 and 2 on the cortical surface. Intrinsic Curvature Index = |k1k2|",
+      "Description": "Intrinsic Curvature Index is the Van Essen curvature index for the region (i.e., the integral across all regions of positive intrinsic curvature divided by 4π)",
       "Units": "unitless",
-      "References": ["https://doi.org/10.1523/JNEUROSCI.17-18-07079.1997"]
+      "References": ["https://doi.org/10.1523/JNEUROSCI.17-18-07079.1997", "https://doi.org/10.1016/j.neuroimage.2006.04.220"]
     },
     "index": {
       "Description": "nth Segmentation in stats file."
     },
     "segid": {
-      "Description": "index in lookup table"
+      "Description": "index in the lookup table"
     },
     "mean_wgpct": {
       "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the mean wgpct across all vertices in this parcel."
@@ -72,10 +72,10 @@
       "Description": "Using rawavg.mgz, W is white matter is sampled 1mm below the white surface and G is gray matter is sampled 30% the thickness into the cortex. wgpct is calculated as (100*(W-G)) / (0.5*(W+G)). This is the maximum wgpct value observed across all vertices in this parcel."
     },
     "range_wgpct": {
-      "Description": "The range of values across all vertices in this parcel. Should be max_wgpct - min_wgpct"
+      "Description": "The range of wgpct values across all vertices in this parcel. Should be max_wgpct - min_wgpct"
     },
     "snr_wgpct": {
-      "Description": "Equal to mean_wgpct / std_wgpct"
+      "Description": "Equal to mean_wgpct / stddev_wgpct"
     }
   }
   
