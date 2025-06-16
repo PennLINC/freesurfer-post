@@ -29,7 +29,11 @@ class SurfStatsMetadata(SimpleInterface):
 
     def _run_interface(self, runtime):
         output_dir = self.inputs.output_dir
-        out_file = Path(output_dir) / self.inputs.subject_id / f'{subject_id}_surfacestats.json'
+        out_file = (
+            Path(output_dir)
+            / self.inputs.subject_id
+            / f'{self.inputs.subject_id}_surfacestats.json'
+        )
 
         with (
             resources.files('freesurfer_post.data')
