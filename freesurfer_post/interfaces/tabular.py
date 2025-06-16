@@ -17,14 +17,21 @@ ASEG_STATS_METADATA = {
     'participant_id': {'Description': 'BIDS participant ID'},
     'session_id': {'Description': 'BIDS session ID'},
     'name': {'Description': 'Name of the structure'},
-    'nvoxels': {'Description': 'Number of voxels in the structure. Originally NVoxels.'},
-    'volume_mm3': {'Description': 'Volume of the structure in mm3. Originally Volume_mm3.'},
+    'nvoxels': {
+        'Description': 'Number of voxels in the structure. Originally NVoxels.'
+    },
+    'volume_mm3': {
+        'Description': 'Volume of the structure in mm3. Originally Volume_mm3.'
+    },
     'normmean': {'Description': 'Normalized mean. Originally normMean.'},
-    'normstddev': {'Description': 'Normalized standard deviation. Originally normStdDev.'},
+    'normstddev': {
+        'Description': 'Normalized standard deviation. Originally normStdDev.'
+    },
     'normmin': {'Description': 'Normalized minimum. Originally normMin.'},
     'normmax': {'Description': 'Normalized maximum. Originally normMax.'},
     'normrange': {'Description': 'Normalized range. Originally normRange.'},
 }
+
 
 def statsfile_to_df(stats_fname, hemi, atlas, column_suffix=''):
     with open(stats_fname) as fo:
@@ -166,27 +173,6 @@ class SummarizeRegionStats(SimpleInterface):
         out_df = out_df[['participant_id'] + cols]
         # Replace missing values with "n/a"
         out_df = out_df.fillna('n/a')
-
-        # Create metadata with the same column names
-        metadata = {}
-        for col in out_df.columns:
-            if col == 'participant_id':
-                metadata[col] = {'Description': 'BIDS participant ID'}
-            elif col == 'session_id':
-                metadata[col] = {'Description': 'BIDS session ID'}
-            elif col == 'hemisphere':
-                metadata[col] = {'Description': 'Brain hemisphere (lh or rh)'}
-            elif col == 'atlas':
-                metadata[col] = {'Description': 'Atlas used for parcellation'}
-            else:
-                metadata[col] = {'Description': f'Surface statistic: {col}'}
-
-        # Save metadata
-        out_json = (
-            output_dir / f'{output_prefix}_seg-{cleaned_atlas_name}_surfacestats.json'
-        )
-        with out_json.open('w') as jsonf:
-            json.dump(metadata, jsonf, indent=2)
 
         # Save data
         out_df.to_csv(
@@ -415,7 +401,9 @@ class FSStats(SimpleInterface):
         # Convert all the keys to snake case
         fs_audit_renamed = {}
         for key in fs_audit:
-            fs_audit_renamed[key.lower().replace('-', '_').replace('.', '_')] = fs_audit[key]
+            fs_audit_renamed[key.lower().replace('-', '_').replace('.', '_')] = (
+                fs_audit[key]
+            )
         fs_audit_renamed['participant_id'] = fs_audit_renamed['subject_id']
         del fs_audit_renamed['subject_id']
 
@@ -439,16 +427,22 @@ class FSStats(SimpleInterface):
         ]
 
         atlas_columns = [
-            col for col in data_df.columns if any(col.endswith(suffix) for suffix in suffixes)
+            col
+            for col in data_df.columns
+            if any(col.endswith(suffix) for suffix in suffixes)
         ]
-        whole_brain_columns = [col for col in data_df.columns if col not in atlas_columns]
+        whole_brain_columns = [
+            col for col in data_df.columns if col not in atlas_columns
+        ]
         atlas_df = data_df[id_cols + atlas_columns]
         whole_brain_df = data_df[id_cols + whole_brain_columns]
 
         atlas_df = melt_with_suffix_list(atlas_df, id_cols, suffixes)
 
         # Create metadata with the same column names as the TSV
-        wholebrain_metadata = {key: fs_audit_renamed[key]['meta'] for key in whole_brain_df.columns}
+        wholebrain_metadata = {
+            key: fs_audit_renamed[key]['meta'] for key in whole_brain_df.columns
+        }
 
         with atlas_json.open('w') as jsonf:
             json.dump(ASEG_STATS_METADATA, jsonf, indent=2, sort_keys=True)

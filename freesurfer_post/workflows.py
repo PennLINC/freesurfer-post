@@ -5,7 +5,7 @@ import nipype.pipeline.engine as pe
 from nipype.interfaces import freesurfer as fs
 from nipype.interfaces.base import traits
 
-from .interfaces import FSStats, SummarizeRegionStats
+from .interfaces import FSStats, SummarizeRegionStats, SurfStatsMetadata
 
 # Directory in the container with the collection of annots
 ANNOTS_DIR = Path('/opt/freesurfer_tabulate/annots/')
@@ -143,12 +143,17 @@ def init_parcellation_wf(
         ),
         name='collect_stats',
     )
+    surf_stats_metadata = pe.Node(SurfStatsMetadata(), name='surf_stats_metadata')
     workflow.connect([
         (inputnode, collect_stats, [
             ('subject_id', 'subject_id'),
             ('session_id', 'session_id'),
             ('fs_subjects_dir', 'subjects_dir'),
             ('output_dir', 'output_dir'),
+        ]),
+        (inputnode, surf_stats_metadata, [
+            ('output_dir', 'output_dir'),
+            ('subject_id', 'subject_id'),
         ]),
     ])  # fmt:skip
     transform_nodes = {}
