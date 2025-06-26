@@ -58,6 +58,9 @@ freesurfer-post = "freesurfer_post.cli:main"
 where = ["."]
 include = ["freesurfer_post*"]
 
+[tool.setuptools.package-data]
+"freesurfer_post.data" = ["*.json"]
+
 [tool.black]
 line-length = 88
 target-version = ['py310']

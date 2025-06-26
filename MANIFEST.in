@@ -2,6 +2,7 @@ include README.md
 include LICENSE
 include pyproject.toml
 recursive-include freesurfer_post *.py
+recursive-include freesurfer_post *.json
 recursive-include tests *.py
 global-exclude *.pyc
 global-exclude __pycache__
