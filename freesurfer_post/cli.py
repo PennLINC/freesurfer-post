@@ -16,9 +16,10 @@ from .workflows import build_workflow
 @click.option('--subjects-dir', type=click.Path(exists=True))
 @click.option('--subject-id', '-s', help='Subject ID to process')
 @click.option('--session-id', '-x', help='Session ID to process')
+@click.option('--run-id', '-r', help='Run ID to process')
 @click.option('--working-dir', '-w', help='Path to working directory')
 @click.option('--fs-license-file', '-l', help='Path to license file')
-def main(
+def main(  # noqa: PLR0917
     verbose,
     input_path,
     output_path,
@@ -26,6 +27,7 @@ def main(
     subjects_dir,
     subject_id,
     session_id,
+    run_id,
     working_dir,
     fs_license_file,
 ):
@@ -44,11 +46,12 @@ def main(
         click.echo('Verbose mode enabled')
 
     # Get the subject's freesurfer directory
-    subject_fs_dir = find_freesurfer_dir(subjects_dir, subject_id, session_id)
+    subject_fs_dir = find_freesurfer_dir(subjects_dir, subject_id, session_id, run_id)
 
     click.echo(f'Processing {input_path} -> {output_path}')
     click.echo(f'Subject ID: {subject_id}')
     click.echo(f'Session ID: {session_id}')
+    click.echo(f'Run ID: {run_id}')
     click.echo(f'Subject directory: {subject_fs_dir}')
     click.echo(f'Processing level: {processing_level}')
     click.echo(f'Working directory: {working_dir}')
@@ -57,6 +60,7 @@ def main(
     workflow = build_workflow(
         subject_id=subject_id,
         session_id=session_id,
+        run_id=run_id,
         subject_freesurfer_dir=subject_fs_dir,
         output_dir=output_path,
         working_dir=working_dir,

@@ -5,7 +5,12 @@ import nipype.pipeline.engine as pe
 from nipype.interfaces import freesurfer as fs
 from nipype.interfaces.base import traits
 
-from .interfaces import FSStats, SummarizeRegionStats, SurfStatsMetadata
+from .interfaces import (
+    FSStats,
+    QcacheToCifti,
+    SummarizeRegionStats,
+    SurfStatsMetadata,
+)
 
 # Directory in the container with the collection of annots
 ANNOTS_DIR = Path('/opt/freesurfer_tabulate/annots/')
@@ -39,19 +44,21 @@ AVAILABLE_PARCELLATIONS = [
 NATIVE_PARCELLATIONS = ['aparc.DKTatlas', 'aparc.a2009s', 'aparc', 'BA_exvivo']
 
 
-def build_workflow(
+def build_workflow(  # noqa: PLR0917
     subject_id: str,
     session_id: str | None,
+    run_id: str | None,
     subject_freesurfer_dir: str | Path,
     output_dir: str | Path,
     working_dir: str | Path,
 ):
     subject_freesurfer_dir = Path(subject_freesurfer_dir)
     subjects_dir = str(subject_freesurfer_dir.parent)
+    freesurfer_id = subject_freesurfer_dir.name
     output_dir = Path(output_dir)
     working_dir = Path(working_dir)
 
-    workflow = pe.Workflow(name=f'freesurfer_post_{subject_id}')
+    workflow = pe.Workflow(name=f'freesurfer_post_{freesurfer_id}')
     workflow.base_dir = working_dir
     workflow.config['execution'] = {'crashdump_dir': output_dir / 'crash'}
     workflow.config['execution']['crashdump_dir'] = output_dir / 'crash'
@@ -59,18 +66,27 @@ def build_workflow(
 
     inputnode = pe.Node(
         niu.IdentityInterface(
-            fields=['subject_id', 'session_id', 'fs_subjects_dir', 'output_dir'],
+            fields=[
+                'subject_id',
+                'session_id',
+                'run_id',
+                'freesurfer_id',
+                'fs_subjects_dir',
+                'output_dir',
+            ],
         ),
         name='inputnode',
     )
     inputnode.inputs.subject_id = subject_id
     inputnode.inputs.session_id = session_id if session_id else traits.Undefined
+    inputnode.inputs.run_id = run_id if run_id else traits.Undefined
+    inputnode.inputs.freesurfer_id = freesurfer_id
     inputnode.inputs.fs_subjects_dir = subjects_dir
     inputnode.inputs.output_dir = output_dir
 
     for parc_name in AVAILABLE_PARCELLATIONS + NATIVE_PARCELLATIONS:
         parc_wf = init_parcellation_wf(
-            subject_id=subject_id,
+            subject_id=freesurfer_id,
             subject_freesurfer_dir=subject_freesurfer_dir,
             parc_name=parc_name,
         )
@@ -78,6 +94,8 @@ def build_workflow(
             (inputnode, parc_wf, [
                 ('subject_id', 'inputnode.subject_id'),
                 ('session_id', 'inputnode.session_id'),
+                ('run_id', 'inputnode.run_id'),
+                ('freesurfer_id', 'inputnode.freesurfer_id'),
                 ('fs_subjects_dir', 'inputnode.fs_subjects_dir'),
                 ('output_dir', 'inputnode.output_dir'),
             ]),
@@ -89,8 +107,31 @@ def build_workflow(
         (inputnode, fs_stats, [
             ('subject_id', 'subject_id'),
             ('session_id', 'session_id'),
+            ('run_id', 'run_id'),
             ('fs_subjects_dir', 'subjects_dir'),
             ('output_dir', 'output_dir'),
+        ]),
+    ])  # fmt:skip
+
+    # Generate fsaverage qcache metrics, then resample and combine them as
+    # fsLR 164k CIFTI dense scalar files in the final output directory.
+    qcache = pe.Node(fs.ReconAll(directive='qcache'), name='qcache')
+    qcache.interface.force_run = True
+    qcache_to_cifti = pe.Node(QcacheToCifti(), name='qcache_to_cifti')
+    workflow.connect([
+        (inputnode, qcache, [
+            ('freesurfer_id', 'subject_id'),
+            ('fs_subjects_dir', 'subjects_dir'),
+        ]),
+        (inputnode, qcache_to_cifti, [
+            ('subject_id', 'subject_id'),
+            ('session_id', 'session_id'),
+            ('run_id', 'run_id'),
+            ('output_dir', 'output_dir'),
+        ]),
+        (qcache, qcache_to_cifti, [
+            ('subject_id', 'freesurfer_id'),
+            ('subjects_dir', 'subjects_dir'),
         ]),
     ])  # fmt:skip
 
@@ -106,7 +147,7 @@ def init_parcellation_wf(
     Parameters
     ----------
     subject_id : str
-        Subject ID. Needed to construct the bizarre input for SegStats.
+        FreeSurfer directory name. Needed to construct the SegStats input.
     subject_freesurfer_dir : str | Path
         Path to the subject's FreeSurfer directory. May include session.
     parc_name : str
@@ -118,6 +159,8 @@ def init_parcellation_wf(
         Subject ID.
     session_id : str | None
         Session ID.
+    run_id : str | None
+        Run ID.
     fs_subjects_dir : str
         Path to the subjects directory.
     output_dir : str | Path
@@ -130,10 +173,18 @@ def init_parcellation_wf(
     """
     inputnode = pe.Node(
         niu.IdentityInterface(
-            fields=['subject_id', 'session_id', 'fs_subjects_dir', 'output_dir'],
+            fields=[
+                'subject_id',
+                'session_id',
+                'run_id',
+                'freesurfer_id',
+                'fs_subjects_dir',
+                'output_dir',
+            ],
         ),
         name='inputnode',
     )
+    freesurfer_id = subject_id
     clean_parc_name = parc_name.replace('.', '').replace('_', '')
     workflow = pe.Workflow(name=f'parcellation_{clean_parc_name}')
 
@@ -152,6 +203,7 @@ def init_parcellation_wf(
         (inputnode, collect_stats, [
             ('subject_id', 'subject_id'),
             ('session_id', 'session_id'),
+            ('run_id', 'run_id'),
             ('fs_subjects_dir', 'subjects_dir'),
             ('output_dir', 'output_dir'),
         ]),
@@ -220,7 +272,7 @@ def init_parcellation_wf(
                 in_file=str(
                     subject_freesurfer_dir / 'surf' / f'{hemi}.w-g.pct.mgh',
                 ),
-                annot=(subject_id, hemi, parc_name),
+                annot=(freesurfer_id, hemi, parc_name),
                 calc_snr=True,
                 summary_file=gwr_stats_file,
             ),
@@ -229,11 +281,11 @@ def init_parcellation_wf(
 
         workflow.connect([
             (inputnode, transform_nodes[hemi], [
-                ('subject_id', 'target_subject'),
+                ('freesurfer_id', 'target_subject'),
                 ('fs_subjects_dir', 'subjects_dir'),
             ]),
             (inputnode, parc_stats_nodes[hemi], [
-                ('subject_id', 'subject_id'),
+                ('freesurfer_id', 'subject_id'),
                 ('fs_subjects_dir', 'subjects_dir'),
             ]),
             (inputnode, gwr_seg_stats_nodes[hemi], [('fs_subjects_dir', 'subjects_dir')]),

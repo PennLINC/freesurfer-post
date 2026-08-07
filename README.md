@@ -105,6 +105,7 @@ input_datasets:
 bids_app_args:
     $SUBJECT_SELECTION_FLAG: "--subject-id"
     $SESSION_SELECTION_FLAG: "--session-id"
+    $RUN_SELECTION_FLAG: "--run-id"
     -w: "$BABS_TMPDIR"
     --subjects-dir: "${PWD}/inputs/data/fmriprep_anat/fmriprep_anat/sourcedata/freesurfer"
     --fs-license-file: "/path/to/FreeSurfer/license.txt" # [FIX ME] path to 
@@ -145,8 +146,35 @@ freesurfer-post /path/to/subjects_dir /path/to/output participant --subject-id s
 
 # Process a specific session
 freesurfer-post /path/to/subjects_dir /path/to/output --subject-id sub-01 --session-id ses-01
+
+# Process a specific run (or fall back to the session/subject directory)
+freesurfer-post /path/to/subjects_dir /path/to/output --subject-id sub-01 --session-id ses-01 --run-id run-01
 ```
 
+### Directory resolution precedence
+
+- Subject directory: `sub-XX`
+- Session directory: `sub-XX_ses-YY`
+- Run directory: `sub-XX[_ses-YY]_run-ZZ`
+
+Resolution order is: run (most specific) > session > subject. If a more specific directory does not exist, processing falls back to the next available level with a warning.
+
+### CIFTI outputs
+
+The workflow runs FreeSurfer's qcache step and converts each paired hemispheric
+vertex measure to an fsLR 164k CIFTI dense scalar. The files use BIDS entities
+and are written with JSON sidecars in the subject's final output directory. For
+example:
+
+```text
+sub-01/sub-01_ses-01_run-01_space-fsLR_den-164k_desc-fwhm10_thickness.dscalar.nii
+sub-01/sub-01_ses-01_run-01_space-fsLR_den-164k_desc-fwhm10_thickness.json
+```
+
+The CIFTI outputs include `area`, `areaPial`, `curv`, `JacobianWhite`, `sulc`,
+`thickness`, `volume`, `whiteH`, and `whiteK`, each with the native and qcache
+smoothed (`desc-fwhm0`, `desc-fwhm5`, `desc-fwhm10`, `desc-fwhm15`,
+`desc-fwhm20`, and `desc-fwhm25`) variants.
 
 
 ## License
