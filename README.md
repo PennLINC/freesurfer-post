@@ -29,25 +29,25 @@ import pandas as pd
 
 # Load the tsvs into dataframes.
 fspost_data = pd.read_csv(
-    "sub-01_atlas-Schaefer2018100Parcels7Networks_surfacestats.tsv", 
-    sep = "\t",
+    'sub-01_atlas-Schaefer2018100Parcels7Networks_surfacestats.tsv',
+    sep='\t',
 )
 xcpd_reho = pd.read_csv(
-    "sub-01_task-emotion_dir-LR_run-1_space-fsLR_seg-4S156Parcels_stat-reho_bold.tsv", 
-    sep = "\t",
+    'sub-01_task-emotion_dir-LR_run-1_space-fsLR_seg-4S156Parcels_stat-reho_bold.tsv',
+    sep='\t',
 )
 
 # Convert xcpd_reho from wide to long format
 xcpd_reho_long = pd.melt(
-  xcpd_reho, 
-  var_name="StructName", 
-  value_name="reho",
+    xcpd_reho,
+    var_name='StructName',
+    value_name='reho',
 )
 # Prepend the string "7Networks_" to match the annot StructName
-xcpd_reho_long["StructName"] = "7Networks_" + xcpd_reho_long["StructName"]
+xcpd_reho_long['StructName'] = '7Networks_' + xcpd_reho_long['StructName']
 
 # Merge fspost_data with xcpd_reho_long, keeping all rows from both datasets
-merged_data = pd.merge(fspost_data, xcpd_reho_long, on="StructName")
+merged_data = pd.merge(fspost_data, xcpd_reho_long, on='StructName')
 ```
 
 ### R Example

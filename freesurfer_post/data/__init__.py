@@ -1,1 +1,1 @@
-"""Data module for freesurfer-post package.""" 
+"""Data module for freesurfer-post package."""

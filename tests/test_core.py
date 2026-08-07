@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest
-
 from freesurfer_post.core import process_data
 
 
@@ -92,7 +91,6 @@ class TestNeuromapsTransform:
     def test_apply_neuromaps_transform_not_implemented(self):
         """Test that apply_neuromaps_transform raises NotImplementedError."""
         import numpy as np
-
         from freesurfer_post.core import apply_neuromaps_transform
 
         dummy_data = np.array([1, 2, 3])
