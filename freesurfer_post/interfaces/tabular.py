@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from nipype.interfaces.base import File, SimpleInterface, TraitedSpec, isdefined, traits
 
-from ..utils import find_freesurfer_dir
+from ..utils import build_output_prefix, find_freesurfer_dir
 
 """Compile FreeSurfer stats files."""
 
@@ -16,6 +16,7 @@ NOSUFFIX_COLS = ['Index', 'SegId', 'StructName']
 ASEG_STATS_METADATA = {
     'participant_id': {'Description': 'BIDS participant ID'},
     'session_id': {'Description': 'BIDS session ID'},
+    'run_id': {'Description': 'BIDS run ID'},
     'name': {'Description': 'Name of the structure'},
     'nvoxels': {
         'Description': 'Number of voxels in the structure. Originally NVoxels.'
@@ -64,6 +65,10 @@ class _SummarizeRegionStatsInputSpec(TraitedSpec):
     )
     session_id = traits.Str(
         desc='Session ID',
+        mandatory=False,
+    )
+    run_id = traits.Str(
+        desc='Run ID',
         mandatory=False,
     )
     atlas_name = traits.Str(
@@ -132,10 +137,12 @@ class SummarizeRegionStats(SimpleInterface):
 
         out_df = pd.concat(surfstat_dfs, axis=0, ignore_index=True)
 
-        # The freesurfer directory may contain subject and session. check here
+        # The freesurfer directory may contain subject and session/run. check here
         session_id = (
             None if not isdefined(self.inputs.session_id) else self.inputs.session_id
         )
+        run_id = None if not isdefined(self.inputs.run_id) else self.inputs.run_id
+        out_df.insert(0, 'run_id', run_id)
         out_df.insert(0, 'session_id', session_id)
         out_df.insert(0, 'subject_id', self.inputs.subject_id)
 
@@ -155,7 +162,7 @@ class SummarizeRegionStats(SimpleInterface):
         sanity_check_columns('SurfArea', 'Area_mm2_wgpct', 1)
         output_dir = Path(self.inputs.output_dir) / subject_id
         output_dir.mkdir(parents=True, exist_ok=True)
-        output_prefix = f'{subject_id}_{session_id}' if session_id else subject_id
+        output_prefix = build_output_prefix(subject_id, session_id, run_id)
 
         cleaned_atlas_name = (
             atlas.replace('.', '').replace('_order', '').replace('_', '')
@@ -330,6 +337,10 @@ class _FSStatsInputSpec(TraitedSpec):
         desc='Session ID',
         mandatory=False,
     )
+    run_id = traits.Str(
+        desc='Run ID',
+        mandatory=False,
+    )
     subjects_dir = traits.Directory(
         desc='Path to ${SUBJECTS_DIR}',
         exists=True,
@@ -358,12 +369,14 @@ class FSStats(SimpleInterface):
         session_id = (
             self.inputs.session_id if isdefined(self.inputs.session_id) else None
         )
+        run_id = self.inputs.run_id if isdefined(self.inputs.run_id) else None
         subjects_dir = Path(self.inputs.subjects_dir)
-        fs_dir = find_freesurfer_dir(subjects_dir, subject_id, session_id)
+        fs_dir = find_freesurfer_dir(subjects_dir, subject_id, session_id, run_id)
 
         fs_audit = {
             'subject_id': {'value': subject_id, 'meta': 'BIDS subject id'},
             'session_id': {'value': session_id, 'meta': 'BIDS session id'},
+            'run_id': {'value': run_id, 'meta': 'BIDS run id'},
         }
         fs_audit.update(get_euler_from_log(fs_dir / 'scripts' / 'recon-all.log'))
 
@@ -392,7 +405,7 @@ class FSStats(SimpleInterface):
         # Write the outputs
         output_dir = Path(self.inputs.output_dir) / subject_id
         output_dir.mkdir(parents=True, exist_ok=True)
-        output_prefix = f'{subject_id}_{session_id}' if session_id else subject_id
+        output_prefix = build_output_prefix(subject_id, session_id, run_id)
         atlas_tsv = output_dir / f'{output_prefix}_seg-FreeSurfer_morph.tsv'
         whole_brain_tsv = output_dir / f'{output_prefix}_desc-FreeSurfer_qc.tsv'
         atlas_json = output_dir / f'{output_prefix}_seg-FreeSurfer_morph.json'
@@ -412,7 +425,7 @@ class FSStats(SimpleInterface):
         data_df = pd.DataFrame([data_value])
 
         cols = data_df.columns.tolist()
-        id_cols = ['participant_id', 'session_id']
+        id_cols = ['participant_id', 'session_id', 'run_id']
         id_cols = [col for col in id_cols if col in cols]
 
         # Split data_df into two dataframes, one for the atlas and one for the whole brain measures
@@ -431,8 +444,13 @@ class FSStats(SimpleInterface):
             for col in data_df.columns
             if any(col.endswith(suffix) for suffix in suffixes)
         ]
+        # The id columns are not atlas columns, so they are already in
+        # whole_brain_columns; excluding them here keeps them from being
+        # selected twice and duplicated in the TSV.
         whole_brain_columns = [
-            col for col in data_df.columns if col not in atlas_columns
+            col
+            for col in data_df.columns
+            if col not in atlas_columns and col not in id_cols
         ]
         atlas_df = data_df[id_cols + atlas_columns]
         whole_brain_df = data_df[id_cols + whole_brain_columns]

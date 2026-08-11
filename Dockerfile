@@ -161,6 +161,16 @@ ENV MKL_NUM_THREADS=1 \
 COPY --from=src /src/dist/*.whl .
 RUN pip install --no-cache-dir $( ls *.whl )[container,test]
 
+# neuromaps downloads its spheres, vertex-area and medial-wall files from OSF
+# on first use. Fetch them at build time and keep them outside $HOME, so runs
+# need no network and work under `apptainer --containall`, where the image's
+# $HOME is not the runtime $HOME.
+ENV NEUROMAPS_DATA="/opt/neuromaps-data"
+COPY docker/files/fetch_neuromaps_data.py /usr/local/bin/fetch_neuromaps_data.py
+RUN mkdir -p $NEUROMAPS_DATA && \
+    python /usr/local/bin/fetch_neuromaps_data.py && \
+    chmod -R a+rX $NEUROMAPS_DATA
+
 RUN find $HOME -type d -exec chmod go=u {} + && \
     find $HOME -type f -exec chmod go=u {} + && \
     rm -rf  $HOME/.conda $HOME/.empty

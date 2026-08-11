@@ -5,6 +5,9 @@
     "session_id": {
       "Description": "BIDS session ID"
     },
+    "run_id": {
+      "Description": "BIDS run ID"
+    },
     "atlas": {
       "Description": "Atlas used for parcellation"
     },
