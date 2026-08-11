@@ -444,8 +444,13 @@ class FSStats(SimpleInterface):
             for col in data_df.columns
             if any(col.endswith(suffix) for suffix in suffixes)
         ]
+        # The id columns are not atlas columns, so they are already in
+        # whole_brain_columns; excluding them here keeps them from being
+        # selected twice and duplicated in the TSV.
         whole_brain_columns = [
-            col for col in data_df.columns if col not in atlas_columns
+            col
+            for col in data_df.columns
+            if col not in atlas_columns and col not in id_cols
         ]
         atlas_df = data_df[id_cols + atlas_columns]
         whole_brain_df = data_df[id_cols + whole_brain_columns]

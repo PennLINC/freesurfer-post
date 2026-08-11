@@ -1,21 +1,38 @@
 """Utility functions for FreeSurfer post-processing."""
 
+import logging
 import warnings
 from pathlib import Path
 
-# FreeSurfer qcache metrics that are converted to CIFTI. The names on the
-# right are intentionally stable derivative suffixes; qcache's dots and
-# underscores are not valid BIDS suffix characters.
+LOGGER = logging.getLogger('nipype.interface')
+
+# Resampling an extensive quantity (one whose value depends on how much
+# surface a vertex covers) with barycentric interpolation does not conserve
+# the total. Sidecars for these metrics say so instead of implying that the
+# fsLR values can be summed to recover a native-surface total.
+_EXTENSIVE_CAVEAT = (
+    'Values are interpolated, not conserved: the resampled map does not sum '
+    'to the native-surface total.'
+)
+
+# FreeSurfer qcache metrics that are converted to CIFTI, keyed by the metric
+# name as it appears in a qcache filename. These are every measure in
+# FreeSurfer 7's recon-all ``measurelist``; ``pial_lgi`` is deliberately absent
+# because it needs ``-localGI``, which needs MATLAB. The suffixes are
+# intentionally stable derivative names, since qcache's dots and underscores
+# are not valid BIDS suffix characters.
 QCACHE_CIFTI_METRICS = {
     'area': {
         'suffix': 'area',
-        'description': 'vertex-wise cortical surface area',
+        'description': 'vertex-wise cortical white-surface area',
         'units': 'mm^2',
+        'extensive': True,
     },
     'area.pial': {
         'suffix': 'areaPial',
-        'description': 'vertex-wise cortical pial surface area',
+        'description': 'vertex-wise cortical pial-surface area',
         'units': 'mm^2',
+        'extensive': True,
     },
     'curv': {
         'suffix': 'curv',
@@ -23,9 +40,9 @@ QCACHE_CIFTI_METRICS = {
         'units': 'mm^-1',
     },
     'jacobian_white': {
-        'suffix': 'JacobianWhite',
+        'suffix': 'jacobianWhite',
         'description': 'Jacobian determinant of the white-surface registration',
-        'units': '1',
+        'units': 'arbitrary',
     },
     'sulc': {
         'suffix': 'sulc',
@@ -39,8 +56,16 @@ QCACHE_CIFTI_METRICS = {
     },
     'volume': {
         'suffix': 'volume',
-        'description': 'vertex-wise cortical volume',
+        'description': 'vertex-wise cortical gray matter volume',
         'units': 'mm^3',
+        'extensive': True,
+    },
+    # recon-all's measure name keeps its .mgh extension, and qcache only
+    # strips .mgz, so the filenames really do contain 'w-g.pct.mgh'.
+    'w-g.pct.mgh': {
+        'suffix': 'wgPct',
+        'description': 'gray/white intensity contrast',
+        'units': 'percent',
     },
     'white.H': {
         'suffix': 'whiteH',
@@ -62,9 +87,9 @@ def build_output_prefix(
 ) -> str:
     """Build the subject/session/run prefix used by output files."""
     entities = [subject_id]
-    if session_id:
+    if session_id is not None:
         entities.append(session_id)
-    if run_id:
+    if run_id is not None:
         entities.append(run_id)
     return '_'.join(entities)
 
@@ -81,12 +106,25 @@ def find_qcache_metric_pairs(
     surface_dir = Path(surface_dir)
     suffix = '.fsaverage.mgh'
     hemispheric_files: dict[str, dict[str, Path]] = {'lh': {}, 'rh': {}}
+    skipped = set()
 
     for hemi in hemispheric_files:
         for metric_file in surface_dir.glob(f'{hemi}.*{suffix}'):
             metric = metric_file.name[len(f'{hemi}.') : -len(suffix)]
-            if parse_qcache_metric(metric) is not None:
+            if parse_qcache_metric(metric) is None:
+                skipped.add(metric)
+            else:
                 hemispheric_files[hemi][metric] = metric_file
+
+    # Say what was dropped, so that a hole in QCACHE_CIFTI_METRICS is visible
+    # in the logs rather than showing up as quietly missing outputs.
+    if skipped:
+        LOGGER.info(
+            'Skipping %d unsupported fsaverage qcache metric(s) in %s: %s',
+            len(skipped),
+            surface_dir,
+            ', '.join(sorted(skipped)),
+        )
 
     left_metrics = set(hemispheric_files['lh'])
     right_metrics = set(hemispheric_files['rh'])
@@ -135,11 +173,16 @@ def build_cifti_metadata(metric: str) -> dict[str, str | int]:
         raise ValueError(f'Unsupported qcache metric: {metric}')
 
     _, metric_info, smoothing_fwhm = parsed_metric
+    description = (
+        f'FreeSurfer {metric_info["description"]}, resampled from fsaverage to '
+        'fsLR at 164k surface density with area-adaptive barycentric '
+        'interpolation.'
+    )
+    if metric_info.get('extensive'):
+        description = f'{description} {_EXTENSIVE_CAVEAT}'
+
     metadata: dict[str, str | int] = {
-        'Description': (
-            f'FreeSurfer {metric_info["description"]}, resampled from fsaverage '
-            'to fsLR at 164k surface density.'
-        ),
+        'Description': description,
         'Units': metric_info['units'],
     }
     if smoothing_fwhm is not None:
@@ -150,7 +193,7 @@ def build_cifti_metadata(metric: str) -> dict[str, str | int]:
 
 def parse_qcache_metric(
     metric: str,
-) -> tuple[str, dict[str, str], int | None] | None:
+) -> tuple[str, dict[str, str | bool], int | None] | None:
     """Parse a supported qcache metric and its optional smoothing level.
 
     ``pial_lgi`` and any other unsupported qcache products are intentionally
@@ -200,42 +243,36 @@ def find_freesurfer_dir(
     if not subjects_dir.exists():
         raise FileNotFoundError(f'Subjects directory {subjects_dir} does not exist')
 
-    preferred_candidate = None
+    # Most specific first. Every combination of the requested entities is a
+    # candidate, because FreeSurfer directory names are only conventionally
+    # related to BIDS entities.
+    entity_sets = [
+        (session_id, run_id),
+        (None, run_id),
+        (session_id, None),
+        (None, None),
+    ]
+    candidates: list[Path] = []
+    for session, run in entity_sets:
+        name = '_'.join(
+            entity for entity in (subject_id, session, run) if entity is not None
+        )
+        candidate = subjects_dir / name
+        if candidate not in candidates:
+            candidates.append(candidate)
 
-    # Most specific: subject[_session]_run.
-    if run_id is not None:
-        entities = [subject_id]
-        if session_id is not None:
-            entities.append(session_id)
-        entities.append(run_id)
-        candidate = subjects_dir / '_'.join(entities)
-        preferred_candidate = candidate
+    preferred_candidate = candidates[0]
+    for candidate in candidates:
         if candidate.exists():
-            return candidate
-
-    # Next: subject_session.
-    if session_id is not None:
-        candidate = subjects_dir / f'{subject_id}_{session_id}'
-        if preferred_candidate is None:
-            preferred_candidate = candidate
-        if candidate.exists():
-            if preferred_candidate != candidate:
+            if candidate != preferred_candidate:
                 warnings.warn(
                     f'{preferred_candidate} not found; using {candidate} instead',
                     stacklevel=2,
                 )
             return candidate
 
-    # Fallback: subject.
-    candidate = subjects_dir / subject_id
-    if candidate.exists():
-        if preferred_candidate is not None:
-            warnings.warn(
-                f'{preferred_candidate} not found; using {candidate} instead',
-                stacklevel=2,
-            )
-        return candidate
-
+    searched = ', '.join(str(candidate) for candidate in candidates)
     raise FileNotFoundError(
-        f'No directory found for subject: {subject_id}, session: {session_id}, run: {run_id}'
+        f'No directory found for subject: {subject_id}, session: {session_id}, '
+        f'run: {run_id}. Searched: {searched}'
     )

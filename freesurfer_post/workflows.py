@@ -44,7 +44,7 @@ AVAILABLE_PARCELLATIONS = [
 NATIVE_PARCELLATIONS = ['aparc.DKTatlas', 'aparc.a2009s', 'aparc', 'BA_exvivo']
 
 
-def build_workflow(  # noqa: PLR0917
+def build_workflow(
     subject_id: str,
     session_id: str | None,
     run_id: str | None,
@@ -52,6 +52,15 @@ def build_workflow(  # noqa: PLR0917
     output_dir: str | Path,
     working_dir: str | Path,
 ):
+    """Build the post-processing workflow for one FreeSurfer directory.
+
+    ``subject_freesurfer_dir`` must be **writable**: ``SurfaceTransform`` adds
+    annots to ``label/``, ``ParcellationStats`` and ``SegStats`` add tables to
+    ``stats/``, and ``recon-all -qcache`` adds ``*.fsaverage.mgh`` files to
+    ``surf/``. Pass the staged copy from
+    :func:`~freesurfer_post.prepare.stage_freesurfer_dir` rather than a path
+    inside the input dataset.
+    """
     subject_freesurfer_dir = Path(subject_freesurfer_dir)
     subjects_dir = str(subject_freesurfer_dir.parent)
     freesurfer_id = subject_freesurfer_dir.name
@@ -61,8 +70,6 @@ def build_workflow(  # noqa: PLR0917
     workflow = pe.Workflow(name=f'freesurfer_post_{freesurfer_id}')
     workflow.base_dir = working_dir
     workflow.config['execution'] = {'crashdump_dir': output_dir / 'crash'}
-    workflow.config['execution']['crashdump_dir'] = output_dir / 'crash'
-    workflow.config['execution']['crashdump_dir'] = output_dir / 'crash'
 
     inputnode = pe.Node(
         niu.IdentityInterface(
@@ -86,7 +93,7 @@ def build_workflow(  # noqa: PLR0917
 
     for parc_name in AVAILABLE_PARCELLATIONS + NATIVE_PARCELLATIONS:
         parc_wf = init_parcellation_wf(
-            subject_id=freesurfer_id,
+            freesurfer_id=freesurfer_id,
             subject_freesurfer_dir=subject_freesurfer_dir,
             parc_name=parc_name,
         )
@@ -115,6 +122,8 @@ def build_workflow(  # noqa: PLR0917
 
     # Generate fsaverage qcache metrics, then resample and combine them as
     # fsLR 164k CIFTI dense scalar files in the final output directory.
+    # force_run is required: recon-all's resume logic sees a complete subject
+    # and would report "nothing to do" without ever reaching the qcache stage.
     qcache = pe.Node(fs.ReconAll(directive='qcache'), name='qcache')
     qcache.interface.force_run = True
     qcache_to_cifti = pe.Node(QcacheToCifti(), name='qcache_to_cifti')
@@ -139,15 +148,17 @@ def build_workflow(  # noqa: PLR0917
 
 
 def init_parcellation_wf(
-    subject_id: str, subject_freesurfer_dir: str | Path, parc_name: str
+    freesurfer_id: str, subject_freesurfer_dir: str | Path, parc_name: str
 ):
     """
     Initialize a workflow to process a single parcellation.
 
     Parameters
     ----------
-    subject_id : str
-        FreeSurfer directory name. Needed to construct the SegStats input.
+    freesurfer_id : str
+        Name of the subject's directory inside ``$SUBJECTS_DIR``, which may
+        include session and run entities. Needed to construct the SegStats
+        input.
     subject_freesurfer_dir : str | Path
         Path to the subject's FreeSurfer directory. May include session.
     parc_name : str
@@ -156,11 +167,15 @@ def init_parcellation_wf(
     Inputs
     ------
     subject_id : str
-        Subject ID.
+        BIDS subject ID, used to name outputs.
     session_id : str | None
-        Session ID.
+        BIDS session ID.
     run_id : str | None
-        Run ID.
+        BIDS run ID.
+    freesurfer_id : str
+        Name of the subject's directory inside ``$SUBJECTS_DIR``. This is what
+        the FreeSurfer commands are given, since it may differ from
+        ``subject_id``.
     fs_subjects_dir : str
         Path to the subjects directory.
     output_dir : str | Path
@@ -184,7 +199,6 @@ def init_parcellation_wf(
         ),
         name='inputnode',
     )
-    freesurfer_id = subject_id
     clean_parc_name = parc_name.replace('.', '').replace('_', '')
     workflow = pe.Workflow(name=f'parcellation_{clean_parc_name}')
 

@@ -116,6 +116,9 @@ unfixable = []
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
+[tool.ruff.lint.isort]
+known-first-party = ["freesurfer_post"]
+
 [tool.ruff.lint.per-file-ignores]
 # Tests can use magic values, assertions, and fixtures
 "tests/**/*" = ["PLR2004", "S101", "ARG", "PT"]

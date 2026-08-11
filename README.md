@@ -148,16 +148,30 @@ freesurfer-post /path/to/subjects_dir /path/to/output participant --subject-id s
 freesurfer-post /path/to/subjects_dir /path/to/output --subject-id sub-01 --session-id ses-01
 
 # Process a specific run (or fall back to the session/subject directory)
-freesurfer-post /path/to/subjects_dir /path/to/output --subject-id sub-01 --session-id ses-01 --run-id run-01
+freesurfer-post /path/to/subjects_dir /path/to/output --subject-id sub-01 --session-id ses-01 --run-id run-01 -w /path/to/work
 ```
+
+`--working-dir` is required. The subject's FreeSurfer directory is copied there
+before processing starts, because every FreeSurfer step in this pipeline writes
+into `$SUBJECTS_DIR`: annots are added to `label/`, tables to `stats/`, and
+qcache adds roughly 100 MB of `*.fsaverage.mgh` files to `surf/`. Working on a
+copy keeps the input dataset unmodified, which matters when it is read-only or a
+DataLad dataset under BABS. Budget an extra 1-2 GB of working-directory space
+per subject for the copy.
 
 ### Directory resolution precedence
 
-- Subject directory: `sub-XX`
-- Session directory: `sub-XX_ses-YY`
-- Run directory: `sub-XX[_ses-YY]_run-ZZ`
+The FreeSurfer directory name is matched against the requested entities, most
+specific first:
 
-Resolution order is: run (most specific) > session > subject. If a more specific directory does not exist, processing falls back to the next available level with a warning.
+1. `sub-XX_ses-YY_run-ZZ`
+2. `sub-XX_run-ZZ`
+3. `sub-XX_ses-YY`
+4. `sub-XX`
+
+Candidates for entities you did not pass are skipped. If the most specific
+directory does not exist, processing falls back to the next candidate that does
+and emits a warning naming both.
 
 ### CIFTI outputs
 
@@ -171,10 +185,18 @@ sub-01/sub-01_ses-01_run-01_space-fsLR_den-164k_desc-fwhm10_thickness.dscalar.ni
 sub-01/sub-01_ses-01_run-01_space-fsLR_den-164k_desc-fwhm10_thickness.json
 ```
 
-The CIFTI outputs include `area`, `areaPial`, `curv`, `JacobianWhite`, `sulc`,
-`thickness`, `volume`, `whiteH`, and `whiteK`, each with the native and qcache
-smoothed (`desc-fwhm0`, `desc-fwhm5`, `desc-fwhm10`, `desc-fwhm15`,
-`desc-fwhm20`, and `desc-fwhm25`) variants.
+Every measure in recon-all's qcache `measurelist` is converted, giving the
+suffixes `area`, `areaPial`, `curv`, `jacobianWhite`, `sulc`, `thickness`,
+`volume`, `wgPct`, `whiteH`, and `whiteK`. Each comes in an unsmoothed variant
+plus the qcache smoothing levels (`desc-fwhm0`, `desc-fwhm5`, `desc-fwhm10`,
+`desc-fwhm15`, `desc-fwhm20`, and `desc-fwhm25`), for 70 dense scalars in total.
+`pial_lgi` is not included, because it requires `recon-all -localGI`, which
+requires MATLAB.
+
+Resampling uses neuromaps' area-adaptive barycentric interpolation. For `area`,
+`areaPial`, and `volume` this means the fsLR values are interpolated rather than
+conserved — they do not sum to the native-surface total — and the JSON sidecars
+say so.
 
 
 ## License

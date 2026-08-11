@@ -1,8 +1,11 @@
 """Command Line Interface for FreeSurfer Post-processing Tools."""
 
+import os
+
 import click
 
 from . import __version__
+from .prepare import stage_freesurfer_dir
 from .utils import find_freesurfer_dir
 from .workflows import build_workflow
 
@@ -19,7 +22,7 @@ from .workflows import build_workflow
 @click.option('--run-id', '-r', help='Run ID to process')
 @click.option('--working-dir', '-w', help='Path to working directory')
 @click.option('--fs-license-file', '-l', help='Path to license file')
-def main(  # noqa: PLR0917
+def main(
     verbose,
     input_path,
     output_path,
@@ -45,6 +48,12 @@ def main(  # noqa: PLR0917
     if verbose:
         click.echo('Verbose mode enabled')
 
+    if not working_dir:
+        raise click.UsageError(
+            '--working-dir is required: the subject FreeSurfer directory is '
+            'copied there so that the input dataset is never written to.'
+        )
+
     # Get the subject's freesurfer directory
     subject_fs_dir = find_freesurfer_dir(subjects_dir, subject_id, session_id, run_id)
 
@@ -57,16 +66,19 @@ def main(  # noqa: PLR0917
     click.echo(f'Working directory: {working_dir}')
     click.echo(f'FreeSurfer license file: {fs_license_file}')
 
+    # Every FreeSurfer step writes into ${SUBJECTS_DIR}, so work on a copy in
+    # the working directory and leave the input dataset untouched.
+    staged_fs_dir = stage_freesurfer_dir(subject_fs_dir, working_dir)
+    click.echo(f'Staged subject directory: {staged_fs_dir}')
+
     workflow = build_workflow(
         subject_id=subject_id,
         session_id=session_id,
         run_id=run_id,
-        subject_freesurfer_dir=subject_fs_dir,
+        subject_freesurfer_dir=staged_fs_dir,
         output_dir=output_path,
         working_dir=working_dir,
     )
-
-    import os
 
     os.environ['FS_LICENSE'] = fs_license_file
     workflow.config['execution'] = {'stop_on_first_crash': 'true'}

@@ -1,6 +1,7 @@
 """Interfaces for converting FreeSurfer qcache metrics to CIFTI files."""
 
 import json
+import logging
 import os
 from pathlib import Path
 from subprocess import run as run_command
@@ -21,6 +22,8 @@ from ..utils import (
     build_output_prefix,
     find_qcache_metric_pairs,
 )
+
+LOGGER = logging.getLogger('nipype.interface')
 
 
 class _QcacheToCiftiInputSpec(TraitedSpec):
@@ -70,6 +73,23 @@ def _get_fsaverage_white(subjects_dir: Path, hemi: str) -> Path:
     )
 
 
+def _run_checked(command: list[str]) -> None:
+    """Run a command, surfacing its output when it fails.
+
+    ``check=True`` on its own raises a ``CalledProcessError`` whose message
+    contains only the return code, which makes a crashfile useless for working
+    out what FreeSurfer or Connectome Workbench actually objected to.
+    """
+    process = run_command(command, capture_output=True, text=True, check=False)
+    if process.returncode != 0:
+        raise RuntimeError(
+            f'Command failed with exit code {process.returncode}:\n'
+            f'  {" ".join(command)}\n'
+            f'stdout:\n{process.stdout}\n'
+            f'stderr:\n{process.stderr}'
+        )
+
+
 def _resample_to_fslr(in_file: Path, out_file: Path, hemi: str) -> None:
     """Resample one fsaverage metric to fsLR 164k with neuromaps."""
     from neuromaps.transforms import fsaverage_to_fslr
@@ -112,7 +132,13 @@ class QcacheToCifti(SimpleInterface):
         }
         out_files = []
         out_jsons = []
+        LOGGER.info('Converting %d qcache metric pair(s) to CIFTI', len(metric_pairs))
         for metric, lh_mgh, rh_mgh in metric_pairs:
+            # Each hemisphere leaves behind two ~650 kB GIFTIs. Converting all
+            # of qcache's metrics would keep hundreds of megabytes of dead
+            # intermediates in the working directory, so they are removed once
+            # the dense scalar is written.
+            intermediates = []
             resampled_metrics = {}
             for hemi, mgh_file, neuromaps_hemi in (
                 ('lh', lh_mgh, 'L'),
@@ -120,7 +146,7 @@ class QcacheToCifti(SimpleInterface):
             ):
                 fsaverage_gii = work_dir / f'{hemi}.{metric}.fsaverage.shape.gii'
                 fslr_gii = work_dir / f'{hemi}.{metric}.fsLR_den-164k.shape.gii'
-                run_command(
+                _run_checked(
                     [
                         'mris_convert',
                         '-c',
@@ -128,13 +154,19 @@ class QcacheToCifti(SimpleInterface):
                         str(fsaverage_surfaces[hemi]),
                         str(fsaverage_gii),
                     ],
-                    check=True,
                 )
                 _resample_to_fslr(fsaverage_gii, fslr_gii, neuromaps_hemi)
                 resampled_metrics[hemi] = fslr_gii
+                intermediates += [fsaverage_gii, fslr_gii]
+
+            # Without this the single map is named '#1', because the GIFTIs
+            # mris_convert produces carry no usable column name.
+            map_name_file = work_dir / f'{metric}.map-name.txt'
+            map_name_file.write_text(f'{metric}\n')
+            intermediates.append(map_name_file)
 
             cifti_file = output_dir / build_cifti_output_name(output_prefix, metric)
-            run_command(
+            _run_checked(
                 [
                     'wb_command',
                     '-cifti-create-dense-scalar',
@@ -143,8 +175,9 @@ class QcacheToCifti(SimpleInterface):
                     str(resampled_metrics['lh']),
                     '-right-metric',
                     str(resampled_metrics['rh']),
+                    '-name-file',
+                    str(map_name_file),
                 ],
-                check=True,
             )
             out_files.append(str(cifti_file))
 
@@ -153,6 +186,9 @@ class QcacheToCifti(SimpleInterface):
                 json.dump(build_cifti_metadata(metric), sidecar, indent=2)
                 sidecar.write('\n')
             out_jsons.append(str(sidecar_file))
+
+            for intermediate in intermediates:
+                intermediate.unlink(missing_ok=True)
 
         self._results['out_files'] = out_files
         self._results['out_jsons'] = out_jsons
