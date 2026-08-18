@@ -82,9 +82,13 @@ RUN micromamba create -y -f /tmp/env.yml && \
 FROM ${BASE_IMAGE} AS fspost
 
 # Configure apt
+# Define these before extending them below. This keeps Docker's build checks
+# honest while preserving the intended empty defaults.
 ENV DEBIAN_FRONTEND="noninteractive" \
     LANG="en_US.UTF-8" \
-    LC_ALL="en_US.UTF-8"
+    LC_ALL="en_US.UTF-8" \
+    CPATH="" \
+    LD_LIBRARY_PATH=""
 
 # Some baseline tools; bc is needed for FreeSurfer, so don't drop it
 RUN apt-get update && \

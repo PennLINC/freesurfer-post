@@ -1,6 +1,6 @@
 # FreeSurfer Post-processing Tools
 
-A Python package for post-processing FreeSurfer outputs. 
+A Python package for post-processing FreeSurfer outputs.
 
 
 ## Combining FreeSurfer data with XCP-D results
@@ -52,14 +52,14 @@ merged_data = pd.merge(fspost_data, xcpd_reho_long, on='StructName')
 
 ### R Example
 
-To do the same thing in R 
+To do the same thing in R
 
 ```r
 library(tidyverse)
 
 # Load the tsvs into dataframes.
 fspost_data <- read.csv(
-  "sub-01_atlas-Schaefer2018100Parcels7Networks_surfacestats.tsv", 
+  "sub-01_atlas-Schaefer2018100Parcels7Networks_surfacestats.tsv",
   sep = "\t"
 )
 xcpd_reho <- read.csv(
@@ -69,8 +69,8 @@ xcpd_reho <- read.csv(
 
 # Convert xcpd_reho from wide to long format
 xcpd_reho_long <- xcpd_reho %>%
-  pivot_longer(cols = everything(), 
-               names_to = "StructName", 
+  pivot_longer(cols = everything(),
+               names_to = "StructName",
                values_to = "reho") %>%
   mutate(StructName = paste0("7Networks_", StructName))
 
@@ -108,7 +108,7 @@ bids_app_args:
     $RUN_SELECTION_FLAG: "--run-id"
     -w: "$BABS_TMPDIR"
     --subjects-dir: "${PWD}/inputs/data/fmriprep_anat/fmriprep_anat/sourcedata/freesurfer"
-    --fs-license-file: "/path/to/FreeSurfer/license.txt" # [FIX ME] path to 
+    --fs-license-file: "/path/to/FreeSurfer/license.txt" # [FIX ME] path to
 ```
 
 

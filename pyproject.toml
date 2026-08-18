@@ -37,7 +37,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "black",
-    "ruff",
+    "ruff==0.16.1",
     "mypy",
 ]
 docs = [
@@ -142,3 +142,8 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+
+[tool.codespell]
+# ``fo`` is the conventional local name for a file object in the legacy
+# FreeSurfer stats parser.
+ignore-words-list = "fo"
