@@ -125,7 +125,7 @@ jobs:
       - run:
           name: Verify the release tag matches package metadata
           command: |
-            python - <<'PY'
+            python - \<<'PY'
             import os
             import sys
             import tomllib
