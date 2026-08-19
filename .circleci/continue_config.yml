@@ -1,0 +1,180 @@
+version: 2.1
+
+parameters:
+  has_any_changes:
+    type: boolean
+    default: false
+  has_code_changes:
+    type: boolean
+    default: false
+
+# ── Reusable executors and filters ───────────────────────────────────
+
+_machine_with_dlc: &machine_with_dlc
+  machine:
+    image: default
+    docker_layer_caching: true
+  working_directory: ~/project
+  resource_class: large
+  environment:
+    DOCKER_BUILDKIT: "1"
+
+# Code changes on a branch run source validation. Tags use the release
+# workflow below, which repeats these checks before publishing.
+_branch_filters: &branch_filters
+  tags:
+    ignore: /.*/
+
+_main_filters: &main_filters
+  branches:
+    only: main
+  tags:
+    ignore: /.*/
+
+# Releases use the repository's existing non-"v" PEP 440 tag convention:
+# 0.2.1 or 0.2.1rc1. Other tags cannot accidentally publish artifacts.
+_release_tag_filters: &release_tag_filters
+  branches:
+    ignore: /.*/
+  tags:
+    only: '/^[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+)?$/'
+
+commands:
+  install_and_test:
+    description: Install the package and run source checks.
+    steps:
+      - restore_cache:
+          keys:
+            - pip-v1-{{ checksum "pyproject.toml" }}
+      - run:
+          name: Install package and test dependencies
+          command: |
+            python -m pip install --upgrade pip
+            python -m pip install ".[dev]"
+      - save_cache:
+          key: pip-v1-{{ checksum "pyproject.toml" }}
+          paths:
+            - ~/.cache/pip
+      - run:
+          name: Check lint and formatting
+          command: |
+            ruff check .
+            ruff format --diff .
+      - run:
+          name: Run unit tests
+          command: python -m pytest tests --verbose
+
+  docker_login:
+    description: Authenticate to Docker Hub when project credentials are available.
+    steps:
+      - run:
+          name: Authenticate to Docker Hub
+          command: |
+            if [[ -n "$DOCKER_PASS" ]]; then
+              echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            fi
+
+jobs:
+  source_checks:
+    docker:
+      - image: cimg/python:3.12
+    working_directory: ~/project
+    steps:
+      - checkout
+      - install_and_test
+
+  build_and_publish_image:
+    <<: *machine_with_dlc
+    steps:
+      - checkout
+      - docker_login
+      - run:
+          name: Build runtime image
+          no_output_timeout: 90m
+          command: |
+            docker build \
+              --build-arg BUILD_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+              --build-arg VCS_REF="$CIRCLE_SHA1" \
+              --build-arg VERSION="${CIRCLE_TAG:-0+dev}" \
+              --tag pennlinc/freesurfer-post:build \
+              .
+      - run:
+          name: Smoke-test command-line interface
+          command: docker run --rm pennlinc/freesurfer-post:build --help
+      - run:
+          name: Publish Docker Hub image
+          command: |
+            if [[ -n "$DOCKER_PASS" ]]; then
+              docker tag pennlinc/freesurfer-post:build pennlinc/freesurfer-post:unstable
+              docker push pennlinc/freesurfer-post:unstable
+
+              if [[ -n "$CIRCLE_TAG" ]]; then
+                docker tag pennlinc/freesurfer-post:build pennlinc/freesurfer-post:latest
+                docker tag pennlinc/freesurfer-post:build "pennlinc/freesurfer-post:$CIRCLE_TAG"
+                docker push pennlinc/freesurfer-post:latest
+                docker push "pennlinc/freesurfer-post:$CIRCLE_TAG"
+              fi
+            fi
+
+  deploy_pypi:
+    docker:
+      - image: cimg/python:3.12
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Verify the release tag matches package metadata
+          command: |
+            python - <<'PY'
+            import os
+            import sys
+            import tomllib
+
+            with open('pyproject.toml', 'rb') as file_obj:
+                package_version = tomllib.load(file_obj)['project']['version']
+
+            tag = os.environ['CIRCLE_TAG']
+            if tag != package_version:
+                sys.exit(
+                    f'Refusing release: tag {tag!r} does not match '
+                    f'pyproject.toml version {package_version!r}.'
+                )
+            PY
+      - run:
+          name: Build and validate distributions
+          command: |
+            python -m pip install --upgrade build twine
+            python -m build --sdist --wheel
+            python -m twine check dist/*
+      - run:
+          name: Upload packages to PyPI
+          command: |
+            python -m twine upload -u __token__ -p "${PYPI_PASS}" dist/*
+
+workflows:
+  version: 2
+
+  verify:
+    when: << pipeline.parameters.has_code_changes >>
+    jobs:
+      - source_checks:
+          filters: *branch_filters
+      # The full container is intentionally built only after the source checks
+      # pass on main; it downloads the FreeSurfer distribution and FSL image.
+      - build_and_publish_image:
+          requires:
+            - source_checks
+          filters: *main_filters
+
+  deploy:
+    jobs:
+      - source_checks:
+          filters: *release_tag_filters
+      - build_and_publish_image:
+          requires:
+            - source_checks
+          filters: *release_tag_filters
+      - deploy_pypi:
+          requires:
+            - build_and_publish_image
+          filters: *release_tag_filters
