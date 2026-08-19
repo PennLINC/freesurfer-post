@@ -191,7 +191,6 @@ freesurfer/bin/flip_4dfp
 freesurfer/bin/flirt.fsl
 freesurfer/bin/flirt.newdefault.20080811.sch
 freesurfer/bin/fname2ext
-freesurfer/bin/fname2stem
 freesurfer/bin/freesurfer
 freesurfer/bin/freeview
 freesurfer/bin/fscalc
@@ -251,8 +250,6 @@ freesurfer/bin/inflate_subject-rh
 freesurfer/bin/inflate_subject_sc
 freesurfer/bin/irepifitvol
 freesurfer/bin/irepifitvol.glnx64
-freesurfer/bin/isanalyze
-freesurfer/bin/isnifti
 freesurfer/bin/isolate_labels.csh
 freesurfer/bin/isolate_labels_keeporigval.csh
 freesurfer/bin/is-surface
@@ -527,7 +524,6 @@ freesurfer/bin/mris_nudge
 freesurfer/bin/mris_parcellate_connectivity
 freesurfer/bin/mri-sph2surf
 freesurfer/bin/mris_pmake
-freesurfer/bin/mris_preproc
 freesurfer/bin/mris_profileClustering
 freesurfer/bin/mrisp_write
 freesurfer/bin/mris_refine_surfaces
