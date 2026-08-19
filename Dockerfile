@@ -26,14 +26,6 @@
 ARG BASE_IMAGE=ubuntu:jammy-20240125
 
 #
-# Build wheel
-#
-FROM ghcr.io/astral-sh/uv:python3.12-alpine AS src
-RUN apk add git
-COPY . /src
-RUN uvx --from build pyproject-build --installer uv -w /src
-
-#
 # Download stages
 #
 
@@ -66,25 +58,16 @@ RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/7.3.2/frees
          freesurfer/subjects/fsaverage \
          freesurfer/average/surf
 
-# Micromamba
-FROM downloader AS micromamba
-
-# Install a C compiler to build extensions when needed.
-# traits<6.4 wheels are not available for Python 3.11+, but build easily.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-WORKDIR /
-# Bump the date to current to force update micromamba
-RUN echo "2024.02.06"
-RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
-
-ENV MAMBA_ROOT_PREFIX="/opt/conda"
-COPY env.yml /tmp/env.yml
-WORKDIR /tmp
-RUN micromamba create -y -f /tmp/env.yml && \
-    micromamba clean -y -a
+# Resolve the runtime from the committed Pixi lockfile. Install dependencies
+# before source to retain the cache-friendly build structure from QSIPrep.
+FROM ghcr.io/prefix-dev/pixi:0.58.0 AS pixi
+WORKDIR /app
+COPY pixi.lock pyproject.toml /app
+RUN --mount=type=cache,target=/root/.cache/rattler \
+    pixi install -e freesurfer-post --frozen --skip freesurfer-post
+COPY . /app
+RUN --mount=type=cache,target=/root/.cache/rattler \
+    pixi install -e freesurfer-post --frozen
 
 #
 # Main stage
@@ -164,21 +147,19 @@ WORKDIR /home/freesurfer-post
 ENV HOME="/home/freesurfer-post" \
     LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
 
-COPY --from=micromamba /bin/micromamba /bin/micromamba
-COPY --from=micromamba /opt/conda/envs/freesurfer-post /opt/conda/envs/freesurfer-post
-
-ENV MAMBA_ROOT_PREFIX="/opt/conda"
-RUN micromamba shell init -s bash && \
-    echo "micromamba activate freesurfer-post" >> $HOME/.bashrc
-ENV PATH="/opt/conda/envs/freesurfer-post/bin:$PATH" \
-    CPATH="/opt/conda/envs/freesurfer-post/include:$CPATH" \
-    LD_LIBRARY_PATH="/opt/conda/envs/freesurfer-post/lib:$LD_LIBRARY_PATH"
+# Pixi environments are relocated by copying them to the same path used by
+# the build stage. This preserves entry-point shebangs and shared-library
+# paths in the locked Conda environment.
+COPY --from=pixi /app/.pixi/envs/freesurfer-post /app/.pixi/envs/freesurfer-post
+ENV PATH="/app/.pixi/envs/freesurfer-post/bin:$PATH" \
+    CPATH="/app/.pixi/envs/freesurfer-post/include:$CPATH" \
+    LD_LIBRARY_PATH="/app/.pixi/envs/freesurfer-post/lib:$LD_LIBRARY_PATH"
 
 # FSL environment
 ENV LANG="C.UTF-8" \
     LC_ALL="C.UTF-8" \
     PYTHONNOUSERSITE=1 \
-    FSLDIR="/opt/conda/envs/freesurfer-post" \
+    FSLDIR="/app/.pixi/envs/freesurfer-post" \
     FSLOUTPUTTYPE="NIFTI_GZ" \
     FSLMULTIFILEQUIT="TRUE" \
     FSLLOCKDIR="" \
@@ -190,10 +171,6 @@ ENV LANG="C.UTF-8" \
 # will handle parallelization
 ENV MKL_NUM_THREADS=1 \
     OMP_NUM_THREADS=1
-
-# Installing FMRIPREP
-COPY --from=src /src/dist/*.whl .
-RUN pip install --no-cache-dir $( ls *.whl )[container,test]
 
 # neuromaps downloads its spheres, vertex-area and medial-wall files from OSF
 # on first use. Fetch them at build time and keep them outside $HOME, so runs
@@ -217,7 +194,7 @@ ENV IS_DOCKER_8395080871=1
 
 RUN ldconfig
 WORKDIR /tmp
-ENTRYPOINT ["/opt/conda/envs/freesurfer-post/bin/freesurfer-post"]
+ENTRYPOINT ["/app/.pixi/envs/freesurfer-post/bin/freesurfer-post"]
 
 ARG BUILD_DATE
 ARG VCS_REF

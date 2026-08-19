@@ -27,7 +27,7 @@ workflows:
             Dockerfile            has_code_changes  true
             \.dockerignore        has_code_changes  true
             pyproject\.toml       has_code_changes  true
-            uv\.lock              has_code_changes  true
+            pixi\.lock            has_code_changes  true
             tox\.ini              has_code_changes  true
             Makefile              has_code_changes  true
             \.circleci/.*         has_code_changes  true

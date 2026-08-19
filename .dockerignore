@@ -1,6 +1,7 @@
 .git
 .github
 .circleci
+.pixi
 .pytest_cache
 .ruff_cache
 .mypy_cache

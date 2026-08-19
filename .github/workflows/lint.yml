@@ -8,6 +8,10 @@ on:
     branches:
       - main
 
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -20,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      # Keep this pin in sync with pyproject.toml and .pre-commit-config.yaml.
+      # Keep this pin in sync with pyproject.toml.
       - name: Check lint
         run: pipx run --spec ruff==0.16.1 ruff check .
       - name: Check formatting
