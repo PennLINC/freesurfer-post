@@ -1,76 +1,33 @@
 version: 2.1
 
-# GitHub Actions handles fast source checks and the Python-version matrix.
-# CircleCI validates the supported runtime image, where Docker layer caching
-# is most useful. This intentionally remains much smaller than the NiPreps
-# BIDS-app pipelines because freesurfer-post has no data-backed integration
-# suite or generated report artifacts.
+# Dynamic configuration keeps documentation-only updates from spending credits
+# on dependency installation or the FreeSurfer container build. The actual
+# jobs live in continue_config.yml.
+setup: true
 
-_all_refs: &all_refs
-  tags:
-    only: /.*/
-
-_main_or_tag: &main_or_tag
-  branches:
-    only: main
-  tags:
-    only: /.*/
-
-jobs:
-  unit_tests:
-    docker:
-      - image: cimg/python:3.12
-    working_directory: ~/project
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - pip-v1-{{ checksum "pyproject.toml" }}
-      - run:
-          name: Install package and test dependencies
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install ".[dev]"
-      - save_cache:
-          key: pip-v1-{{ checksum "pyproject.toml" }}
-          paths:
-            - ~/.cache/pip
-      - run:
-          name: Run unit tests
-          command: python -m pytest tests --verbose
-
-  docker_build:
-    machine:
-      image: default
-      docker_layer_caching: true
-    resource_class: large
-    working_directory: ~/project
-    environment:
-      DOCKER_BUILDKIT: "1"
-    steps:
-      - checkout
-      - run:
-          name: Build runtime image
-          no_output_timeout: 90m
-          command: |
-            docker build \
-              --build-arg VCS_REF="$CIRCLE_SHA1" \
-              --build-arg VERSION="${CIRCLE_TAG:-dev}" \
-              --tag "freesurfer-post:ci-$CIRCLE_SHA1" \
-              .
-      - run:
-          name: Smoke-test command-line interface
-          command: docker run --rm "freesurfer-post:ci-$CIRCLE_SHA1" --help
+orbs:
+  path-filtering: circleci/path-filtering@2
 
 workflows:
-  verify:
+  setup:
     jobs:
-      - unit_tests:
-          filters: *all_refs
-      # Building the image for every pull request would repeatedly download
-      # FreeSurfer and the FSL environment. Validate it on main and tags,
-      # after the source-level checks have passed.
-      - docker_build:
-          requires:
-            - unit_tests
-          filters: *main_or_tag
+      - path-filtering/filter:
+          base-revision: main
+          config-path: .circleci/continue_config.yml
+          # Tag pushes have no diff for the path filter to inspect, but must
+          # still continue so that the release workflow can run.
+          filters:
+            tags:
+              only: /.*/
+          mapping: |
+            .*                    has_any_changes   true
+            freesurfer_post/.*    has_code_changes  true
+            tests/.*              has_code_changes  true
+            docker/.*             has_code_changes  true
+            Dockerfile            has_code_changes  true
+            \.dockerignore        has_code_changes  true
+            pyproject\.toml       has_code_changes  true
+            pixi\.lock            has_code_changes  true
+            tox\.ini              has_code_changes  true
+            Makefile              has_code_changes  true
+            \.circleci/.*         has_code_changes  true

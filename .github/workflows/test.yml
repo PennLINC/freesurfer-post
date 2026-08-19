@@ -8,6 +8,10 @@ on:
     branches:
       - main
 
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -54,3 +58,18 @@ jobs:
           python -m pip install --upgrade build twine
           python -m build --sdist --wheel
           python -m twine check dist/*
+
+  pixi:
+    name: Test locked Pixi environment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: v0.58.0
+          run-install: false
+      - name: Run locked lint and test tasks
+        run: |
+          pixi run -e test lint
+          pixi run -e test format
+          pixi run -e test test

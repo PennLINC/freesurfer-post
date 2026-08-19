@@ -1,0 +1,26 @@
+name: Check Pixi lockfile
+
+on:
+  pull_request:
+    paths:
+      - pyproject.toml
+      - pixi.lock
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: v0.58.0
+          run-install: false
+      - name: Verify the lockfile is current
+        run: pixi lock --check
