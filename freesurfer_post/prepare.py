@@ -13,8 +13,7 @@ STAGED_SUBJECTS_DIRNAME = 'staged_freesurfer'
 
 
 def _link_fsaverage(source_subjects_dir: Path, staged_subjects_dir: Path) -> None:
-    """Make ``fsaverage`` reachable from the staged ${SUBJECTS_DIR}.
-    """
+    """Make ``fsaverage`` reachable from the staged ${SUBJECTS_DIR}."""
     destination = staged_subjects_dir / 'fsaverage'
     if destination.exists():
         return
@@ -34,8 +33,7 @@ def _link_fsaverage(source_subjects_dir: Path, staged_subjects_dir: Path) -> Non
 
     searched = ', '.join(str(candidate) for candidate in candidates)
     raise FileNotFoundError(
-        'Could not find an fsaverage subject with lh.white and rh.white: '
-        f'{searched}'
+        f'Could not find an fsaverage subject with lh.white and rh.white: {searched}'
     )
 
 
