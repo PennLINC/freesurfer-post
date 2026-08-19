@@ -56,6 +56,16 @@ COPY docker/files/freesurfer7.3.2-exclude.txt /usr/local/etc/freesurfer7.3.2-exc
 RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/7.3.2/freesurfer-linux-ubuntu22_amd64-7.3.2.tar.gz \
      | tar zxv --no-same-owner -C /opt --exclude-from=/usr/local/etc/freesurfer7.3.2-exclude.txt
 
+# Extract a complete reference subject independently of the pruned FreeSurfer
+# installation.  fsaverage is distributed as part of FreeSurfer rather than as
+# a standalone 7.3.2 download.  Keeping it in a dedicated stage guarantees
+# that its surfaces remain available to qcache and CIFTI conversion.
+FROM downloader AS freesurfer-fsaverage
+RUN curl -sSL https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/7.3.2/freesurfer-linux-ubuntu22_amd64-7.3.2.tar.gz \
+     | tar zxv --no-same-owner -C /opt \
+         freesurfer/subjects/fsaverage \
+         freesurfer/average/surf
+
 # Micromamba
 FROM downloader AS micromamba
 
@@ -100,11 +110,16 @@ RUN apt-get update && \
                     gnupg \
                     lsb-release \
                     netbase \
+                    tcsh \
                     xvfb && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install files from stages
 COPY --from=freesurfer /opt/freesurfer /opt/freesurfer
+# Overlay a complete fsaverage and any shared surface files it references. This
+# makes the reference subject available without depending on the input dataset.
+COPY --from=freesurfer-fsaverage /opt/freesurfer/average/surf /opt/freesurfer/average/surf
+COPY --from=freesurfer-fsaverage /opt/freesurfer/subjects/fsaverage /opt/freesurfer/subjects/fsaverage
 
 # Simulate SetUpFreeSurfer.sh
 ENV OS="Linux" \
@@ -122,6 +137,21 @@ ENV SUBJECTS_DIR="$FREESURFER_HOME/subjects" \
 ENV PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     MNI_PERL5LIB="$MINC_LIB_DIR/perl5/5.8.5" \
     PATH="$FREESURFER_HOME/bin:$FREESURFER_HOME/tktools:$MINC_BIN_DIR:$PATH"
+
+# Keep the complete recon-all qcache path. The FreeSurfer distribution is
+# pruned during the download stage, so fail the image build if it loses one of
+# qcache's scripts, utilities, or the fsaverage target.
+RUN for fs_command in \
+        recon-all fs-check-version rca-config rca-config2csh fs_time \
+        mris_place_surface mris_preproc fname2stem isanalyze isnifti \
+        mri_surf2surf mri_concat; do \
+        command -v "$fs_command" > /dev/null; \
+    done && \
+    test -x /bin/tcsh && \
+    test -e "$FREESURFER_HOME/subjects/fsaverage/surf/lh.white" && \
+    test -e "$FREESURFER_HOME/subjects/fsaverage/surf/rh.white" && \
+    mris_preproc --version && \
+    test "$(fname2stem qcache.mgh)" = qcache
 
 # AFNI config
 ENV PATH="/opt/afni-latest:$PATH" \

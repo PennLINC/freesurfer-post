@@ -13,22 +13,16 @@ STAGED_SUBJECTS_DIRNAME = 'staged_freesurfer'
 
 
 def _link_fsaverage(source_subjects_dir: Path, staged_subjects_dir: Path) -> None:
-    """Make ``fsaverage`` reachable from the staged ${SUBJECTS_DIR}.
-
-    ``recon-all -qcache`` resamples to fsaverage and ``SurfaceTransform`` reads
-    its annots, so both need ``$SUBJECTS_DIR/fsaverage`` to resolve. recon-all
-    would create this symlink itself, but only for its own stage and only after
-    deciding the target is missing, so create it up front and fail with a clear
-    message when there is nothing to point at.
-    """
+    """Make ``fsaverage`` reachable from the staged ${SUBJECTS_DIR}."""
     destination = staged_subjects_dir / 'fsaverage'
     if destination.exists():
         return
 
-    candidates = [source_subjects_dir / 'fsaverage']
+    candidates = []
     freesurfer_home = os.getenv('FREESURFER_HOME')
     if freesurfer_home:
         candidates.append(Path(freesurfer_home) / 'subjects' / 'fsaverage')
+    candidates.append(source_subjects_dir / 'fsaverage')
 
     for candidate in candidates:
         if candidate.exists():
@@ -38,7 +32,9 @@ def _link_fsaverage(source_subjects_dir: Path, staged_subjects_dir: Path) -> Non
             return
 
     searched = ', '.join(str(candidate) for candidate in candidates)
-    raise FileNotFoundError(f'Could not find an fsaverage subject: {searched}')
+    raise FileNotFoundError(
+        f'Could not find an fsaverage subject with lh.white and rh.white: {searched}'
+    )
 
 
 def stage_freesurfer_dir(
