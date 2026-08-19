@@ -1228,8 +1228,8 @@ packages:
   timestamp: 1778770568019
 - pypi: ./
   name: freesurfer-post
-  version: 0.2.1rc1
-  sha256: c76cd8bcc1b5aecc9520a3d555c46fe35e5741d2bf7fb9cd2e83ad8c8bfe80eb
+  version: 0.2.1
+  sha256: d807f95a6cdb28ad0bf15ac5285711edb0e3715b29e288d61fa7992ee3f4e642
   requires_dist:
   - neuromaps
   - nipype
@@ -1247,8 +1247,8 @@ packages:
   editable: true
 - pypi: ./
   name: freesurfer-post
-  version: 0.2.1rc1
-  sha256: c76cd8bcc1b5aecc9520a3d555c46fe35e5741d2bf7fb9cd2e83ad8c8bfe80eb
+  version: 0.2.1
+  sha256: d807f95a6cdb28ad0bf15ac5285711edb0e3715b29e288d61fa7992ee3f4e642
   requires_dist:
   - neuromaps
   - nipype

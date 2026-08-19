@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "freesurfer-post"
-version = "0.2.1rc1"
+version = "0.2.1"
 description = "Post-processing tools for FreeSurfer outputs"
 readme = "README.md"
 requires-python = ">=3.10"

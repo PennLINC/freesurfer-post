@@ -31,8 +31,8 @@ _main_filters: &main_filters
   tags:
     ignore: /.*/
 
-# Releases use the repository's existing non-"v" PEP 440 tag convention:
-# 0.2.1 or 0.2.1rc1. Other tags cannot accidentally publish artifacts.
+# Releases use the repository's existing non-"v" PEP 440 convention for
+# final and release-candidate versions. Other tags cannot publish artifacts.
 _release_tag_filters: &release_tag_filters
   branches:
     ignore: /.*/
